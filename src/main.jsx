@@ -32,6 +32,7 @@ import {
   X,
 } from 'lucide-react';
 import './styles.css';
+import HeroLanding from './HeroLanding';
 
 const spaces = [
   {
@@ -754,4 +755,21 @@ function formatTime(seconds) {
   return `${minutes}:${secs}`;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+function Root() {
+  const roomFromUrl = new URLSearchParams(window.location.search).get('room');
+  const [entered, setEntered] = usePersistentState('lockin-entered', false);
+
+  if (entered || roomFromUrl) {
+    return <App />;
+  }
+
+  const authenticate = (user) => {
+    // Persist synchronously so App picks up the mocked user when it mounts.
+    localStorage.setItem('lockin-user', JSON.stringify(user));
+    setEntered(true);
+  };
+
+  return <HeroLanding onAuthenticate={authenticate} />;
+}
+
+createRoot(document.getElementById('root')).render(<Root />);
