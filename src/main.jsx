@@ -34,115 +34,68 @@ import {
 import './styles.css';
 import HeroLanding from './HeroLanding';
 
+const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1800&q=80`;
+
 const spaces = [
-  {
-    id: 'rainy-library',
-    name: 'rainy library',
-    category: 'rain',
-    mood: 'deep reading',
-    image: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(16, 28, 30, 0.48)',
-    video: 'zbWL2QXlpxA',
-  },
-  {
-    id: 'dawn-desk',
-    name: 'dawn desk',
-    category: 'morning',
-    mood: 'gentle review',
-    image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(43, 54, 43, 0.42)',
-    video: 'BCxTQq0UiFs',
-  },
-  {
-    id: 'botanical-room',
-    name: 'botanical room',
-    category: 'nature',
-    mood: 'light tasks',
-    image: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(18, 62, 48, 0.42)',
-    video: 'Xs-gaC3HORU',
-  },
-  {
-    id: 'night-focus',
-    name: 'night focus',
-    category: 'night',
-    mood: 'quiet grind',
-    image: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(14, 18, 36, 0.56)',
-    video: 'obBIjcFwyts',
-  },
-  {
-    id: 'cozy-cafe',
-    name: 'cozy cafe',
-    category: 'cafe',
-    mood: 'essay flow',
-    image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(57, 37, 23, 0.44)',
-    video: 'lTRiuFIWV54',
-  },
-  {
-    id: 'forest-cabin',
-    name: 'forest cabin',
-    category: 'nature',
-    mood: 'calm recall',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(24, 54, 34, 0.48)',
-    video: 'jfKfPfyJRdk',
-  },
-  {
-    id: 'ocean-window',
-    name: 'ocean window',
-    category: 'water',
-    mood: 'slow planning',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(19, 56, 65, 0.46)',
-    video: '5qap5aO4i9A',
-  },
-  {
-    id: 'soft-studio',
-    name: 'soft studio',
-    category: 'minimal',
-    mood: 'clean start',
-    image: 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(59, 53, 46, 0.36)',
-    video: 'DWcJFNfaw9c',
-  },
-  {
-    id: 'snowy-evening',
-    name: 'snowy evening',
-    category: 'winter',
-    mood: 'exam prep',
-    image: 'https://images.unsplash.com/photo-1483664852095-d6cc6870702d?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(28, 38, 49, 0.5)',
-    video: 'BCxTQq0UiFs',
-  },
-  {
-    id: 'sunlit-archive',
-    name: 'sunlit archive',
-    category: 'library',
-    mood: 'research mode',
-    image: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(68, 53, 30, 0.42)',
-    video: 'zbWL2QXlpxA',
-  },
-  {
-    id: 'greenhouse',
-    name: 'greenhouse',
-    category: 'nature',
-    mood: 'biology notes',
-    image: 'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(28, 65, 39, 0.44)',
-    video: 'Xs-gaC3HORU',
-  },
-  {
-    id: 'moon-dorm',
-    name: 'moon dorm',
-    category: 'night',
-    mood: 'late session',
-    image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1800&q=80',
-    tint: 'rgba(22, 21, 44, 0.54)',
-    video: 'obBIjcFwyts',
-  },
+  // rain — cool greys / slate blue
+  { id: 'rainy-library', name: 'rainy library', category: 'rain', mood: 'deep reading', image: img('photo-1428592953211-077101b2021b'), tint: 'rgba(26, 36, 44, 0.5)', video: 'zbWL2QXlpxA', accent: '#9fb6c4', accent2: '#c3d2da' },
+  { id: 'rain-on-glass', name: 'rain on glass', category: 'rain', mood: 'slow notes', image: img('photo-1519692933481-e162a57d6721'), tint: 'rgba(24, 34, 42, 0.52)', video: 'zbWL2QXlpxA', accent: '#9fb6c4', accent2: '#c3d2da' },
+  { id: 'storm-study', name: 'storm study', category: 'rain', mood: 'quiet focus', image: img('photo-1493314894560-5c412a56c17c'), tint: 'rgba(22, 30, 38, 0.54)', video: 'obBIjcFwyts', accent: '#9fb6c4', accent2: '#c3d2da' },
+
+  // forest — greens
+  { id: 'forest-cabin', name: 'forest cabin', category: 'forest', mood: 'calm recall', image: img('photo-1500530855697-b586d89ba3ee'), tint: 'rgba(20, 46, 32, 0.48)', video: 'jfKfPfyJRdk', accent: '#8fc99f', accent2: '#6fae8e' },
+  { id: 'pine-trail', name: 'pine trail', category: 'forest', mood: 'gentle review', image: img('photo-1441974231531-c6227db76b6e'), tint: 'rgba(22, 50, 34, 0.46)', video: 'Xs-gaC3HORU', accent: '#8fc99f', accent2: '#6fae8e' },
+  { id: 'mossy-grove', name: 'mossy grove', category: 'forest', mood: 'light tasks', image: img('photo-1448375240586-882707db888b'), tint: 'rgba(18, 44, 30, 0.5)', video: 'jfKfPfyJRdk', accent: '#8fc99f', accent2: '#6fae8e' },
+
+  // beach — teals
+  { id: 'ocean-window', name: 'ocean window', category: 'beach', mood: 'slow planning', image: img('photo-1507525428034-b723cf961d3e'), tint: 'rgba(16, 52, 56, 0.44)', video: '5qap5aO4i9A', accent: '#5fd0c2', accent2: '#8fe0d0' },
+  { id: 'sandy-cove', name: 'sandy cove', category: 'beach', mood: 'easy reading', image: img('photo-1505228395891-9a51e7e86bf6'), tint: 'rgba(18, 54, 58, 0.42)', video: '5qap5aO4i9A', accent: '#5fd0c2', accent2: '#8fe0d0' },
+  { id: 'palm-shore', name: 'palm shore', category: 'beach', mood: 'bright focus', image: img('photo-1473116763249-2faaef81ccda'), tint: 'rgba(14, 50, 54, 0.46)', video: 'lTRiuFIWV54', accent: '#5fd0c2', accent2: '#8fe0d0' },
+
+  // cafe — warm amber / brown
+  { id: 'cozy-cafe', name: 'cozy cafe', category: 'cafe', mood: 'essay flow', image: img('photo-1554118811-1e0d58224f24'), tint: 'rgba(48, 32, 20, 0.46)', video: 'lTRiuFIWV54', accent: '#d8a86a', accent2: '#e7c79a' },
+  { id: 'espresso-bar', name: 'espresso bar', category: 'cafe', mood: 'warm grind', image: img('photo-1501339847302-ac426a4a7cbb'), tint: 'rgba(50, 34, 22, 0.48)', video: 'lTRiuFIWV54', accent: '#d8a86a', accent2: '#e7c79a' },
+  { id: 'corner-bistro', name: 'corner bistro', category: 'cafe', mood: 'light writing', image: img('photo-1445116572660-236099ec97a0'), tint: 'rgba(46, 30, 20, 0.46)', video: 'DWcJFNfaw9c', accent: '#d8a86a', accent2: '#e7c79a' },
+
+  // library — parchment gold
+  { id: 'sunlit-archive', name: 'sunlit archive', category: 'library', mood: 'research mode', image: img('photo-1507842217343-583bb7270b66'), tint: 'rgba(44, 34, 22, 0.46)', video: 'zbWL2QXlpxA', accent: '#d9bd85', accent2: '#c6a578' },
+  { id: 'grand-reading-room', name: 'grand reading room', category: 'library', mood: 'deep study', image: img('photo-1521587760476-6c12a4b040da'), tint: 'rgba(42, 32, 20, 0.48)', video: 'DWcJFNfaw9c', accent: '#d9bd85', accent2: '#c6a578' },
+  { id: 'old-stacks', name: 'old stacks', category: 'library', mood: 'exam prep', image: img('photo-1481627834876-b7833e8f5570'), tint: 'rgba(40, 30, 20, 0.5)', video: 'zbWL2QXlpxA', accent: '#d9bd85', accent2: '#c6a578' },
+
+  // night city — neon violet / cyan
+  { id: 'night-focus', name: 'night focus', category: 'night city', mood: 'quiet grind', image: img('photo-1480714378408-67cf0d13bc1b'), tint: 'rgba(22, 20, 40, 0.54)', video: 'obBIjcFwyts', accent: '#b48fe6', accent2: '#6fc7e0' },
+  { id: 'skyline-desk', name: 'skyline desk', category: 'night city', mood: 'late session', image: img('photo-1449824913935-59a10b8d2000'), tint: 'rgba(20, 18, 38, 0.56)', video: 'obBIjcFwyts', accent: '#b48fe6', accent2: '#6fc7e0' },
+  { id: 'neon-window', name: 'neon window', category: 'night city', mood: 'midnight flow', image: img('photo-1493976040374-85c8e12f0c0e'), tint: 'rgba(24, 20, 42, 0.54)', video: 'jfKfPfyJRdk', accent: '#b48fe6', accent2: '#6fc7e0' },
+
+  // fireplace — warm orange / red
+  { id: 'fireside-nook', name: 'fireside nook', category: 'fireplace', mood: 'cozy recall', image: img('photo-1543599538-a6c4f6cc5c05'), tint: 'rgba(46, 24, 16, 0.48)', video: 'BCxTQq0UiFs', accent: '#f0a060', accent2: '#e87a55' },
+  { id: 'hearth-room', name: 'hearth room', category: 'fireplace', mood: 'warm reading', image: img('photo-1476611317561-60117649dd94'), tint: 'rgba(44, 22, 16, 0.5)', video: 'BCxTQq0UiFs', accent: '#f0a060', accent2: '#e87a55' },
+  { id: 'ember-study', name: 'ember study', category: 'fireplace', mood: 'slow focus', image: img('photo-1513694203232-719a280e022f'), tint: 'rgba(42, 22, 14, 0.5)', video: 'obBIjcFwyts', accent: '#f0a060', accent2: '#e87a55' },
+
+  // space / cosmos — indigo / blue
+  { id: 'deep-cosmos', name: 'deep cosmos', category: 'cosmos', mood: 'dream focus', image: img('photo-1462331940025-496dfbfc7564'), tint: 'rgba(14, 16, 38, 0.58)', video: 'obBIjcFwyts', accent: '#9b8fe6', accent2: '#7fb0e6' },
+  { id: 'starfield', name: 'starfield', category: 'cosmos', mood: 'quiet grind', image: img('photo-1419242902214-272b3f66ee7a'), tint: 'rgba(12, 14, 36, 0.6)', video: 'jfKfPfyJRdk', accent: '#9b8fe6', accent2: '#7fb0e6' },
+  { id: 'milky-way', name: 'milky way', category: 'cosmos', mood: 'late session', image: img('photo-1444703686981-a3abbc4d4fe3'), tint: 'rgba(14, 16, 40, 0.58)', video: 'obBIjcFwyts', accent: '#9b8fe6', accent2: '#7fb0e6' },
+
+  // snow — icy blue / white
+  { id: 'snowy-evening', name: 'snowy evening', category: 'snow', mood: 'exam prep', image: img('photo-1483664852095-d6cc6870702d'), tint: 'rgba(30, 40, 50, 0.46)', video: 'BCxTQq0UiFs', accent: '#bcd6e8', accent2: '#dcecf4' },
+  { id: 'frost-cabin', name: 'frost cabin', category: 'snow', mood: 'calm recall', image: img('photo-1517299321609-52687d1bc55a'), tint: 'rgba(28, 38, 48, 0.48)', video: 'BCxTQq0UiFs', accent: '#bcd6e8', accent2: '#dcecf4' },
+  { id: 'winter-window', name: 'winter window', category: 'snow', mood: 'slow notes', image: img('photo-1491002052546-bf38f186af56'), tint: 'rgba(30, 40, 52, 0.46)', video: 'zbWL2QXlpxA', accent: '#bcd6e8', accent2: '#dcecf4' },
+
+  // underwater — aqua / blue
+  { id: 'coral-depths', name: 'coral depths', category: 'underwater', mood: 'slow planning', image: img('photo-1518837695005-2083093ee35b'), tint: 'rgba(12, 40, 56, 0.52)', video: '5qap5aO4i9A', accent: '#5fc6d8', accent2: '#6fa8e0' },
+  { id: 'blue-lagoon', name: 'blue lagoon', category: 'underwater', mood: 'easy reading', image: img('photo-1530053969600-caed2596d242'), tint: 'rgba(12, 42, 58, 0.5)', video: '5qap5aO4i9A', accent: '#5fc6d8', accent2: '#6fa8e0' },
+  { id: 'reef-drift', name: 'reef drift', category: 'underwater', mood: 'calm focus', image: img('photo-1559827260-dc66d52bef19'), tint: 'rgba(10, 38, 54, 0.52)', video: 'Xs-gaC3HORU', accent: '#5fc6d8', accent2: '#6fa8e0' },
+
+  // japanese garden — sakura pink / green
+  { id: 'zen-garden', name: 'zen garden', category: 'japanese garden', mood: 'mindful study', image: img('photo-1503640538573-148065ba4904'), tint: 'rgba(40, 28, 36, 0.44)', video: 'Xs-gaC3HORU', accent: '#e8a8c2', accent2: '#9bc99e' },
+  { id: 'sakura-court', name: 'sakura court', category: 'japanese garden', mood: 'gentle review', image: img('photo-1492571350019-22de08371fd3'), tint: 'rgba(42, 30, 38, 0.44)', video: 'jfKfPfyJRdk', accent: '#e8a8c2', accent2: '#9bc99e' },
+  { id: 'koi-pond', name: 'koi pond', category: 'japanese garden', mood: 'calm recall', image: img('photo-1480796927426-f609979314bd'), tint: 'rgba(38, 28, 36, 0.46)', video: 'Xs-gaC3HORU', accent: '#e8a8c2', accent2: '#9bc99e' },
+
+  // lofi rooftop — sunset rose / orange
+  { id: 'rooftop-dusk', name: 'rooftop dusk', category: 'lofi rooftop', mood: 'chill flow', image: img('photo-1519501025264-65ba15a82390'), tint: 'rgba(44, 28, 38, 0.48)', video: 'jfKfPfyJRdk', accent: '#e0a0b8', accent2: '#e6b07a' },
+  { id: 'city-rooftop', name: 'city rooftop', category: 'lofi rooftop', mood: 'easy grind', image: img('photo-1470770841072-f978cf4d019e'), tint: 'rgba(46, 30, 40, 0.48)', video: 'DWcJFNfaw9c', accent: '#e0a0b8', accent2: '#e6b07a' },
+  { id: 'sunset-terrace', name: 'sunset terrace', category: 'lofi rooftop', mood: 'soft focus', image: img('photo-1444723121867-7a241cacace9'), tint: 'rgba(48, 30, 38, 0.48)', video: 'lTRiuFIWV54', accent: '#e0a0b8', accent2: '#e6b07a' },
 ];
 
 const starterTasks = [
@@ -307,7 +260,7 @@ function App() {
   };
 
   return (
-    <main className={isMenuOpen ? 'app' : 'app menu-collapsed'} style={{ '--space-image': `url(${space.image})`, '--space-tint': space.tint }}>
+    <main className={isMenuOpen ? 'app' : 'app menu-collapsed'} style={{ '--space-image': `url(${space.image})`, '--space-tint': space.tint, '--accent': space.accent, '--accent-2': space.accent2 }}>
       <Backdrop activeVideo={activeVideo} videoStarted={videoStarted} space={space} />
 
       <aside className="sidebar" aria-label="lock in menu">
