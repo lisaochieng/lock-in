@@ -484,9 +484,10 @@ function Backdrop({ activeVideo, videoStarted, space }) {
 
 function NavButton({ icon, label, active, open, onClick }) {
   return (
-    <button className={active ? 'nav-button active' : 'nav-button'} onClick={onClick} title={label}>
-      {icon}
-      {open && <span>{label}</span>}
+    <button className={active ? 'nav-button active' : 'nav-button'} onClick={onClick} aria-label={label}>
+      <span className="nav-icon">{icon}</span>
+      <span className="nav-label" aria-hidden={!open}>{label}</span>
+      <span className="nav-tooltip" role="tooltip">{label}</span>
     </button>
   );
 }
