@@ -38,69 +38,72 @@ import {
 import './styles.css';
 import HeroLanding from './HeroLanding';
 
-const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1800&q=80`;
+const thumb = (id) => `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
 
 const spaces = [
-  // rain — cool greys / slate blue
-  { id: 'rainy-library', name: 'rainy library', category: 'rain', mood: 'deep reading', image: img('photo-1428592953211-077101b2021b'), tint: 'rgba(26, 36, 44, 0.5)', video: 'zbWL2QXlpxA', accent: '#9fb6c4', accent2: '#c3d2da' },
-  { id: 'rain-on-glass', name: 'rain on glass', category: 'rain', mood: 'slow notes', image: img('photo-1519692933481-e162a57d6721'), tint: 'rgba(24, 34, 42, 0.52)', video: 'zbWL2QXlpxA', accent: '#9fb6c4', accent2: '#c3d2da' },
-  { id: 'storm-study', name: 'storm study', category: 'rain', mood: 'quiet focus', image: img('photo-1493314894560-5c412a56c17c'), tint: 'rgba(22, 30, 38, 0.54)', video: 'obBIjcFwyts', accent: '#9fb6c4', accent2: '#c3d2da' },
+  // rain — cool slate greys
+  { id: 'rainy-library', name: 'rainy village', category: 'rain', mood: 'deep reading', video: '6ntUefWpN40', tint: 'rgba(26, 36, 44, 0.5)', accent: '#9fb6c4', accent2: '#c3d2da' },
+  { id: 'rain-on-window', name: 'rain on window', category: 'rain', mood: 'slow notes', video: 'JzlYA5iYkEE', tint: 'rgba(24, 34, 42, 0.52)', accent: '#9fb6c4', accent2: '#c3d2da' },
+  { id: 'quiet-rainstorm', name: 'quiet study rain', category: 'rain', mood: 'quiet focus', video: 'LmFXjuuIDOE', tint: 'rgba(22, 30, 38, 0.54)', accent: '#9fb6c4', accent2: '#c3d2da' },
 
-  // forest — greens
-  { id: 'forest-cabin', name: 'forest cabin', category: 'forest', mood: 'calm recall', image: img('photo-1500530855697-b586d89ba3ee'), tint: 'rgba(20, 46, 32, 0.48)', video: 'jfKfPfyJRdk', accent: '#8fc99f', accent2: '#6fae8e' },
-  { id: 'pine-trail', name: 'pine trail', category: 'forest', mood: 'gentle review', image: img('photo-1441974231531-c6227db76b6e'), tint: 'rgba(22, 50, 34, 0.46)', video: 'Xs-gaC3HORU', accent: '#8fc99f', accent2: '#6fae8e' },
-  { id: 'mossy-grove', name: 'mossy grove', category: 'forest', mood: 'light tasks', image: img('photo-1448375240586-882707db888b'), tint: 'rgba(18, 44, 30, 0.5)', video: 'jfKfPfyJRdk', accent: '#8fc99f', accent2: '#6fae8e' },
+  // forest — earthy greens
+  { id: 'forest-cabin', name: 'woodland birdsong', category: 'forest', mood: 'calm recall', video: 'XxP8kxUn5bc', tint: 'rgba(20, 46, 32, 0.48)', accent: '#8fc99f', accent2: '#6fae8e' },
+  { id: 'forest-stream', name: 'forest stream', category: 'forest', mood: 'gentle review', video: 'JsyMl9uz4rQ', tint: 'rgba(22, 50, 34, 0.46)', accent: '#8fc99f', accent2: '#6fae8e' },
+  { id: 'ancient-woods', name: 'ancient woods', category: 'forest', mood: 'light tasks', video: 'Qm846KdZN_c', tint: 'rgba(18, 44, 30, 0.5)', accent: '#8fc99f', accent2: '#6fae8e' },
 
-  // beach — teals
-  { id: 'ocean-window', name: 'ocean window', category: 'beach', mood: 'slow planning', image: img('photo-1507525428034-b723cf961d3e'), tint: 'rgba(16, 52, 56, 0.44)', video: '5qap5aO4i9A', accent: '#5fd0c2', accent2: '#8fe0d0' },
-  { id: 'sandy-cove', name: 'sandy cove', category: 'beach', mood: 'easy reading', image: img('photo-1505228395891-9a51e7e86bf6'), tint: 'rgba(18, 54, 58, 0.42)', video: '5qap5aO4i9A', accent: '#5fd0c2', accent2: '#8fe0d0' },
-  { id: 'palm-shore', name: 'palm shore', category: 'beach', mood: 'bright focus', image: img('photo-1473116763249-2faaef81ccda'), tint: 'rgba(14, 50, 54, 0.46)', video: 'lTRiuFIWV54', accent: '#5fd0c2', accent2: '#8fe0d0' },
+  // beach — soft teals
+  { id: 'ocean-window', name: 'ocean shore', category: 'beach', mood: 'slow planning', video: 'dxNg3q1n2HI', tint: 'rgba(16, 52, 56, 0.44)', accent: '#5fd0c2', accent2: '#8fe0d0' },
+  { id: 'rolling-waves', name: 'rolling waves', category: 'beach', mood: 'easy reading', video: 'Q9a86gbpbjU', tint: 'rgba(18, 54, 58, 0.42)', accent: '#5fd0c2', accent2: '#8fe0d0' },
+  { id: 'greek-cove', name: 'greek cove', category: 'beach', mood: 'bright focus', video: '_iPgznUNWbU', tint: 'rgba(14, 50, 54, 0.46)', accent: '#5fd0c2', accent2: '#8fe0d0' },
 
   // cafe — warm amber / brown
-  { id: 'cozy-cafe', name: 'cozy cafe', category: 'cafe', mood: 'essay flow', image: img('photo-1554118811-1e0d58224f24'), tint: 'rgba(48, 32, 20, 0.46)', video: 'lTRiuFIWV54', accent: '#d8a86a', accent2: '#e7c79a' },
-  { id: 'espresso-bar', name: 'espresso bar', category: 'cafe', mood: 'warm grind', image: img('photo-1501339847302-ac426a4a7cbb'), tint: 'rgba(50, 34, 22, 0.48)', video: 'lTRiuFIWV54', accent: '#d8a86a', accent2: '#e7c79a' },
-  { id: 'corner-bistro', name: 'corner bistro', category: 'cafe', mood: 'light writing', image: img('photo-1445116572660-236099ec97a0'), tint: 'rgba(46, 30, 20, 0.46)', video: 'DWcJFNfaw9c', accent: '#d8a86a', accent2: '#e7c79a' },
+  { id: 'cozy-cafe', name: 'cozy cafe', category: 'cafe', mood: 'essay flow', video: 'MYPVQccHhAQ', tint: 'rgba(48, 32, 20, 0.46)', accent: '#d8a86a', accent2: '#e7c79a' },
+  { id: 'winter-cafe', name: 'winter cafe', category: 'cafe', mood: 'warm grind', video: 'jh4C7w-dvho', tint: 'rgba(50, 34, 22, 0.48)', accent: '#d8a86a', accent2: '#e7c79a' },
+  { id: 'new-york-cafe', name: 'new york cafe', category: 'cafe', mood: 'light writing', video: 'PRAGLqfNK1o', tint: 'rgba(46, 30, 20, 0.46)', accent: '#d8a86a', accent2: '#e7c79a' },
 
   // library — parchment gold
-  { id: 'sunlit-archive', name: 'sunlit archive', category: 'library', mood: 'research mode', image: img('photo-1507842217343-583bb7270b66'), tint: 'rgba(44, 34, 22, 0.46)', video: 'zbWL2QXlpxA', accent: '#d9bd85', accent2: '#c6a578' },
-  { id: 'grand-reading-room', name: 'grand reading room', category: 'library', mood: 'deep study', image: img('photo-1521587760476-6c12a4b040da'), tint: 'rgba(42, 32, 20, 0.48)', video: 'DWcJFNfaw9c', accent: '#d9bd85', accent2: '#c6a578' },
-  { id: 'old-stacks', name: 'old stacks', category: 'library', mood: 'exam prep', image: img('photo-1481627834876-b7833e8f5570'), tint: 'rgba(40, 30, 20, 0.5)', video: 'zbWL2QXlpxA', accent: '#d9bd85', accent2: '#c6a578' },
+  { id: 'sunlit-archive', name: 'study library', category: 'library', mood: 'research mode', video: 'eXGwSlxeG0k', tint: 'rgba(44, 34, 22, 0.46)', accent: '#d9bd85', accent2: '#c6a578' },
+  { id: 'gothic-manor', name: 'gothic manor', category: 'library', mood: 'deep study', video: '6orVoBwfGSA', tint: 'rgba(42, 32, 20, 0.48)', accent: '#d9bd85', accent2: '#c6a578' },
+  { id: 'rainy-library-jazz', name: 'rainy library', category: 'library', mood: 'exam prep', video: 'FbrJJxntUws', tint: 'rgba(40, 30, 20, 0.5)', accent: '#d9bd85', accent2: '#c6a578' },
 
-  // night city — neon violet / cyan
-  { id: 'night-focus', name: 'night focus', category: 'night city', mood: 'quiet grind', image: img('photo-1480714378408-67cf0d13bc1b'), tint: 'rgba(22, 20, 40, 0.54)', video: 'obBIjcFwyts', accent: '#b48fe6', accent2: '#6fc7e0' },
-  { id: 'skyline-desk', name: 'skyline desk', category: 'night city', mood: 'late session', image: img('photo-1449824913935-59a10b8d2000'), tint: 'rgba(20, 18, 38, 0.56)', video: 'obBIjcFwyts', accent: '#b48fe6', accent2: '#6fc7e0' },
-  { id: 'neon-window', name: 'neon window', category: 'night city', mood: 'midnight flow', image: img('photo-1493976040374-85c8e12f0c0e'), tint: 'rgba(24, 20, 42, 0.54)', video: 'jfKfPfyJRdk', accent: '#b48fe6', accent2: '#6fc7e0' },
+  // fireplace — warm ambers
+  { id: 'fireside-cabin', name: 'fireside cabin', category: 'fireplace', mood: 'cozy recall', video: 'IJf4QMPEbOI', tint: 'rgba(46, 24, 16, 0.48)', accent: '#f0a060', accent2: '#e87a55' },
+  { id: 'crackling-hearth', name: 'crackling hearth', category: 'fireplace', mood: 'warm reading', video: 'cuPPcx9KRVw', tint: 'rgba(44, 22, 16, 0.5)', accent: '#f0a060', accent2: '#e87a55' },
+  { id: 'ember-glow', name: 'ember glow', category: 'fireplace', mood: 'slow focus', video: 'GDEWcq1us48', tint: 'rgba(42, 22, 14, 0.5)', accent: '#f0a060', accent2: '#e87a55' },
 
-  // fireplace — warm orange / red
-  { id: 'fireside-nook', name: 'fireside nook', category: 'fireplace', mood: 'cozy recall', image: img('photo-1543599538-a6c4f6cc5c05'), tint: 'rgba(46, 24, 16, 0.48)', video: 'BCxTQq0UiFs', accent: '#f0a060', accent2: '#e87a55' },
-  { id: 'hearth-room', name: 'hearth room', category: 'fireplace', mood: 'warm reading', image: img('photo-1476611317561-60117649dd94'), tint: 'rgba(44, 22, 16, 0.5)', video: 'BCxTQq0UiFs', accent: '#f0a060', accent2: '#e87a55' },
-  { id: 'ember-study', name: 'ember study', category: 'fireplace', mood: 'slow focus', image: img('photo-1513694203232-719a280e022f'), tint: 'rgba(42, 22, 14, 0.5)', video: 'obBIjcFwyts', accent: '#f0a060', accent2: '#e87a55' },
+  // night city — deep purples
+  { id: 'night-focus', name: 'neon city rain', category: 'night city', mood: 'quiet grind', video: 'DKOFLh6fNas', tint: 'rgba(22, 20, 40, 0.54)', accent: '#b48fe6', accent2: '#8f9ce8' },
+  { id: 'neon-walk', name: 'neon walk', category: 'night city', mood: 'midnight flow', video: 'AJOepyLmMBU', tint: 'rgba(20, 18, 38, 0.56)', accent: '#b48fe6', accent2: '#8f9ce8' },
+  { id: 'city-drive', name: 'city drive', category: 'night city', mood: 'late session', video: '0GZUoICMpuU', tint: 'rgba(24, 20, 42, 0.54)', accent: '#b48fe6', accent2: '#8f9ce8' },
 
-  // space / cosmos — indigo / blue
-  { id: 'deep-cosmos', name: 'deep cosmos', category: 'cosmos', mood: 'dream focus', image: img('photo-1462331940025-496dfbfc7564'), tint: 'rgba(14, 16, 38, 0.58)', video: 'obBIjcFwyts', accent: '#9b8fe6', accent2: '#7fb0e6' },
-  { id: 'starfield', name: 'starfield', category: 'cosmos', mood: 'quiet grind', image: img('photo-1419242902214-272b3f66ee7a'), tint: 'rgba(12, 14, 36, 0.6)', video: 'jfKfPfyJRdk', accent: '#9b8fe6', accent2: '#7fb0e6' },
-  { id: 'milky-way', name: 'milky way', category: 'cosmos', mood: 'late session', image: img('photo-1444703686981-a3abbc4d4fe3'), tint: 'rgba(14, 16, 40, 0.58)', video: 'obBIjcFwyts', accent: '#9b8fe6', accent2: '#7fb0e6' },
-
-  // snow — icy blue / white
-  { id: 'snowy-evening', name: 'snowy evening', category: 'snow', mood: 'exam prep', image: img('photo-1483664852095-d6cc6870702d'), tint: 'rgba(30, 40, 50, 0.46)', video: 'BCxTQq0UiFs', accent: '#bcd6e8', accent2: '#dcecf4' },
-  { id: 'frost-cabin', name: 'frost cabin', category: 'snow', mood: 'calm recall', image: img('photo-1517299321609-52687d1bc55a'), tint: 'rgba(28, 38, 48, 0.48)', video: 'BCxTQq0UiFs', accent: '#bcd6e8', accent2: '#dcecf4' },
-  { id: 'winter-window', name: 'winter window', category: 'snow', mood: 'slow notes', image: img('photo-1491002052546-bf38f186af56'), tint: 'rgba(30, 40, 52, 0.46)', video: 'zbWL2QXlpxA', accent: '#bcd6e8', accent2: '#dcecf4' },
-
-  // underwater — aqua / blue
-  { id: 'coral-depths', name: 'coral depths', category: 'underwater', mood: 'slow planning', image: img('photo-1518837695005-2083093ee35b'), tint: 'rgba(12, 40, 56, 0.52)', video: '5qap5aO4i9A', accent: '#5fc6d8', accent2: '#6fa8e0' },
-  { id: 'blue-lagoon', name: 'blue lagoon', category: 'underwater', mood: 'easy reading', image: img('photo-1530053969600-caed2596d242'), tint: 'rgba(12, 42, 58, 0.5)', video: '5qap5aO4i9A', accent: '#5fc6d8', accent2: '#6fa8e0' },
-  { id: 'reef-drift', name: 'reef drift', category: 'underwater', mood: 'calm focus', image: img('photo-1559827260-dc66d52bef19'), tint: 'rgba(10, 38, 54, 0.52)', video: 'Xs-gaC3HORU', accent: '#5fc6d8', accent2: '#6fa8e0' },
+  // snow — icy blues
+  { id: 'snowy-evening', name: 'snowy forest', category: 'snow', mood: 'exam prep', video: 'JFajK-Nn49w', tint: 'rgba(30, 40, 50, 0.46)', accent: '#bcd6e8', accent2: '#dcecf4' },
+  { id: 'snow-lake', name: 'snow on the lake', category: 'snow', mood: 'calm recall', video: 'jh_KFTYJnDo', tint: 'rgba(28, 38, 48, 0.48)', accent: '#bcd6e8', accent2: '#dcecf4' },
+  { id: 'forest-blizzard', name: 'forest blizzard', category: 'snow', mood: 'slow notes', video: 'MEnbuMfbM9c', tint: 'rgba(30, 40, 52, 0.46)', accent: '#bcd6e8', accent2: '#dcecf4' },
 
   // japanese garden — sakura pink / green
-  { id: 'zen-garden', name: 'zen garden', category: 'japanese garden', mood: 'mindful study', image: img('photo-1503640538573-148065ba4904'), tint: 'rgba(40, 28, 36, 0.44)', video: 'Xs-gaC3HORU', accent: '#e8a8c2', accent2: '#9bc99e' },
-  { id: 'sakura-court', name: 'sakura court', category: 'japanese garden', mood: 'gentle review', image: img('photo-1492571350019-22de08371fd3'), tint: 'rgba(42, 30, 38, 0.44)', video: 'jfKfPfyJRdk', accent: '#e8a8c2', accent2: '#9bc99e' },
-  { id: 'koi-pond', name: 'koi pond', category: 'japanese garden', mood: 'calm recall', image: img('photo-1480796927426-f609979314bd'), tint: 'rgba(38, 28, 36, 0.46)', video: 'Xs-gaC3HORU', accent: '#e8a8c2', accent2: '#9bc99e' },
+  { id: 'zen-garden', name: 'zen garden', category: 'japanese garden', mood: 'mindful study', video: 'nKjeWnUn7sc', tint: 'rgba(40, 28, 36, 0.44)', accent: '#e8a8c2', accent2: '#9bc99e' },
+  { id: 'bamboo-fountain', name: 'bamboo fountain', category: 'japanese garden', mood: 'gentle review', video: '4WQ1lsikdQE', tint: 'rgba(42, 30, 38, 0.44)', accent: '#e8a8c2', accent2: '#9bc99e' },
+  { id: 'koi-garden', name: 'koi garden', category: 'japanese garden', mood: 'calm recall', video: 'aJaZc4E8Y4U', tint: 'rgba(38, 28, 36, 0.46)', accent: '#e8a8c2', accent2: '#9bc99e' },
 
-  // lofi rooftop — sunset rose / orange
-  { id: 'rooftop-dusk', name: 'rooftop dusk', category: 'lofi rooftop', mood: 'chill flow', image: img('photo-1519501025264-65ba15a82390'), tint: 'rgba(44, 28, 38, 0.48)', video: 'jfKfPfyJRdk', accent: '#e0a0b8', accent2: '#e6b07a' },
-  { id: 'city-rooftop', name: 'city rooftop', category: 'lofi rooftop', mood: 'easy grind', image: img('photo-1470770841072-f978cf4d019e'), tint: 'rgba(46, 30, 40, 0.48)', video: 'DWcJFNfaw9c', accent: '#e0a0b8', accent2: '#e6b07a' },
-  { id: 'sunset-terrace', name: 'sunset terrace', category: 'lofi rooftop', mood: 'soft focus', image: img('photo-1444723121867-7a241cacace9'), tint: 'rgba(48, 30, 38, 0.48)', video: 'lTRiuFIWV54', accent: '#e0a0b8', accent2: '#e6b07a' },
-];
+  // underwater — aqua / blue
+  { id: 'coral-reef', name: 'coral reef', category: 'underwater', mood: 'slow planning', video: 'eHxbMa2RVTQ', tint: 'rgba(12, 40, 56, 0.52)', accent: '#5fc6d8', accent2: '#6fa8e0' },
+  { id: 'reef-aquarium', name: 'reef aquarium', category: 'underwater', mood: 'easy reading', video: 'NE2-H5Br-C8', tint: 'rgba(12, 42, 58, 0.5)', accent: '#5fc6d8', accent2: '#6fa8e0' },
+  { id: 'deep-reef', name: 'deep reef', category: 'underwater', mood: 'calm focus', video: 'hZ8YuF82QAQ', tint: 'rgba(10, 38, 54, 0.52)', accent: '#5fc6d8', accent2: '#6fa8e0' },
+
+  // rooftop — dusky rose / sunset
+  { id: 'rooftop-sunset', name: 'rooftop sunset', category: 'rooftop', mood: 'soft focus', video: 'YuYSDNcwVgg', tint: 'rgba(44, 28, 38, 0.48)', accent: '#e0a0b8', accent2: '#e6b07a' },
+  { id: 'open-window-night', name: 'open window night', category: 'rooftop', mood: 'late session', video: 'Vg1mpD1BICI', tint: 'rgba(40, 26, 40, 0.5)', accent: '#e0a0b8', accent2: '#e6b07a' },
+
+  // thunderstorm — stormy blue-grey
+  { id: 'rolling-thunder', name: 'rolling thunder', category: 'thunderstorm', mood: 'deep focus', video: 'aLcTO3tnnKo', tint: 'rgba(20, 24, 34, 0.56)', accent: '#8f9cc4', accent2: '#b0b8d0' },
+  { id: 'night-storm', name: 'night storm', category: 'thunderstorm', mood: 'quiet grind', video: 'o2VbPkxrBa4', tint: 'rgba(18, 22, 32, 0.58)', accent: '#8f9cc4', accent2: '#b0b8d0' },
+  { id: 'cabin-storm', name: 'cabin storm', category: 'thunderstorm', mood: 'cozy recall', video: 'rturNpd-D6s', tint: 'rgba(22, 24, 32, 0.54)', accent: '#8f9cc4', accent2: '#b0b8d0' },
+
+  // waterfall — fresh teal-green
+  { id: 'forest-waterfall', name: 'forest waterfall', category: 'waterfall', mood: 'fresh focus', video: 'wGXRyO0zhqE', tint: 'rgba(16, 44, 40, 0.48)', accent: '#6fd0b0', accent2: '#9fd8c0' },
+  { id: 'cascading-falls', name: 'cascading falls', category: 'waterfall', mood: 'easy flow', video: 'eG3RL02umkk', tint: 'rgba(14, 42, 38, 0.5)', accent: '#6fd0b0', accent2: '#9fd8c0' },
+].map((space) => ({ ...space, image: thumb(space.video) }));
 
 const starterTasks = [
   { id: crypto.randomUUID(), title: 'review today\'s lecture notes', done: false },
@@ -291,7 +294,7 @@ function App() {
     setWidgetsOpen(Object.fromEntries(widgetIds.map((id) => [id, next])));
   };
 
-  const viewTitles = { space: 'spaces', profile: 'profile', goals: 'goals', calendar: 'calendar' };
+  const viewTitles = { space: 'spaces', profile: 'profile', calendar: 'calendar' };
 
   return (
     <main className={isMenuOpen ? 'app panel-open' : 'app'} style={{ '--space-image': `url(${space.image})`, '--space-tint': space.tint, '--accent': space.accent, '--accent-2': space.accent2 }}>
@@ -305,7 +308,6 @@ function App() {
         <nav className="rail-section rail-top" aria-label="pages">
           <RailButton icon={<LayoutGrid size={19} />} label="spaces" active={isMenuOpen && activeView === 'space'} onClick={() => openView('space')} />
           <RailButton icon={<UserCircle size={19} />} label="profile" active={isMenuOpen && activeView === 'profile'} onClick={() => openView('profile')} />
-          <RailButton icon={<Goal size={19} />} label="goals" active={isMenuOpen && activeView === 'goals'} onClick={() => openView('goals')} />
           <RailButton icon={<CalendarDays size={19} />} label="calendar" active={isMenuOpen && activeView === 'calendar'} onClick={() => openView('calendar')} />
         </nav>
 
@@ -315,7 +317,7 @@ function App() {
         <nav className="rail-section rail-bottom" aria-label="widgets">
           <RailButton icon={<Timer size={19} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
           <RailButton icon={<ListTodo size={19} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
-          <RailButton icon={<Target size={19} />} label="goals widget" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
+          <RailButton icon={<Target size={19} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
           <RailButton icon={<BarChart3 size={19} />} label="progress" active={widgetsOpen.progress} onClick={() => toggleWidget('progress')} />
           <RailButton icon={<Users size={19} />} label="room" active={widgetsOpen.room} onClick={() => toggleWidget('room')} />
           <RailButton icon={<MoreHorizontal size={19} />} label={allWidgetsOpen ? 'hide all widgets' : 'show all widgets'} active={allWidgetsOpen} onClick={toggleAllWidgets} />
@@ -378,10 +380,6 @@ function App() {
             />
           )}
 
-          {activeView === 'goals' && (
-            <GoalPanel settings={settings} setSettings={setSettings} stats={stats} todayMinutes={todayMinutes} weekMinutes={weekMinutes} />
-          )}
-
           {activeView === 'calendar' && (
             <CalendarPanel
               provider={calendarProvider}
@@ -424,7 +422,7 @@ function App() {
 
         {widgetsOpen.timer && (
           <DraggableWidget id="timer" title="timer" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
-            <TimerWidget mode={mode} selectMode={selectMode} secondsLeft={secondsLeft} settings={settings} isRunning={isRunning} setIsRunning={setIsRunning} />
+            <TimerWidget mode={mode} selectMode={selectMode} secondsLeft={secondsLeft} settings={settings} setSettings={setSettings} setSecondsLeft={setSecondsLeft} isRunning={isRunning} setIsRunning={setIsRunning} />
           </DraggableWidget>
         )}
 
@@ -501,9 +499,9 @@ function NavButton({ icon, label, active, open, onClick }) {
 
 function RailButton({ icon, label, active, onClick }) {
   return (
-    <button className={active ? 'rail-button active' : 'rail-button'} onClick={onClick} aria-label={label} aria-pressed={active}>
-      {icon}
-      <span className="nav-tooltip" role="tooltip">{label}</span>
+    <button className={active ? 'rail-button active' : 'rail-button'} onClick={onClick} aria-pressed={active}>
+      <span className="rail-icon">{icon}</span>
+      <span className="rail-label">{label}</span>
     </button>
   );
 }
@@ -610,12 +608,19 @@ function DraggableWidget({ id, title, positions, onMove, stageRef, children }) {
   );
 }
 
-function TimerWidget({ mode, selectMode, secondsLeft, settings, isRunning, setIsRunning }) {
+function TimerWidget({ mode, selectMode, secondsLeft, settings, setSettings, setSecondsLeft, isRunning, setIsRunning }) {
   const total = (mode === 'focus' ? settings.focus : mode === 'shortBreak' ? settings.shortBreak : settings.longBreak) * 60;
+  const setDuration = (key, value) => {
+    const minutes = Math.max(1, Number(value) || 1);
+    setSettings({ ...settings, [key]: minutes });
+    if (key === mode && !isRunning) {
+      setSecondsLeft(minutes * 60);
+    }
+  };
   return (
     <>
       <div className="timer-tabs">
-        {[['focus', 'focus'], ['shortBreak', 'break'], ['longBreak', 'long']].map(([value, label]) => (
+        {[['focus', 'focus'], ['shortBreak', 'short break'], ['longBreak', 'long break']].map(([value, label]) => (
           <button key={value} className={mode === value ? 'active' : ''} onClick={() => selectMode(value)}>{label}</button>
         ))}
       </div>
@@ -625,6 +630,11 @@ function TimerWidget({ mode, selectMode, secondsLeft, settings, isRunning, setIs
       <div className="timer-controls">
         <button onClick={() => setIsRunning((value) => !value)} className="primary">{isRunning ? <Pause size={18} /> : <Play size={18} />}{isRunning ? 'pause' : 'start'}</button>
         <button onClick={() => selectMode(mode)}><RotateCcw size={17} /> reset</button>
+      </div>
+      <div className="timer-durations">
+        <label><span>focus</span><input type="number" min="1" value={settings.focus} onChange={(event) => setDuration('focus', event.target.value)} aria-label="focus minutes" /></label>
+        <label><span>short break</span><input type="number" min="1" value={settings.shortBreak} onChange={(event) => setDuration('shortBreak', event.target.value)} aria-label="short break minutes" /></label>
+        <label><span>long break</span><input type="number" min="1" value={settings.longBreak} onChange={(event) => setDuration('longBreak', event.target.value)} aria-label="long break minutes" /></label>
       </div>
     </>
   );
