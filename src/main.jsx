@@ -5,17 +5,20 @@ import {
   CalendarCheck,
   CalendarDays,
   Check,
+  ChevronLeft,
   ChevronRight,
   Clipboard,
   Copy,
   Flame,
   Goal,
   Home,
+  LayoutGrid,
   Link as LinkIcon,
   ListTodo,
   LockKeyhole,
   Mail,
   Menu,
+  MoreHorizontal,
   Move,
   PanelLeftClose,
   PanelLeftOpen,
@@ -25,6 +28,7 @@ import {
   RotateCcw,
   Search,
   Sparkles,
+  Target,
   Timer,
   Trash2,
   UserCircle,
@@ -153,6 +157,13 @@ function App() {
     progress: { x: 36, y: 70 },
     room: { x: 4, y: 62 },
   });
+  const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', {
+    timer: true,
+    tasks: true,
+    goals: true,
+    progress: true,
+    room: true,
+  });
   const [mode, setMode] = useState('focus');
   const [secondsLeft, setSecondsLeft] = useState(settings.focus * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -259,96 +270,129 @@ function App() {
     setWidgetPositions((current) => ({ ...current, [id]: next }));
   };
 
+  const widgetIds = ['timer', 'tasks', 'goals', 'progress', 'room'];
+  const allWidgetsOpen = widgetIds.every((id) => widgetsOpen[id]);
+
+  const openView = (view) => {
+    if (isMenuOpen && activeView === view) {
+      setIsMenuOpen(false);
+    } else {
+      setActiveView(view);
+      setIsMenuOpen(true);
+    }
+  };
+
+  const toggleWidget = (id) => {
+    setWidgetsOpen((current) => ({ ...current, [id]: !current[id] }));
+  };
+
+  const toggleAllWidgets = () => {
+    const next = !allWidgetsOpen;
+    setWidgetsOpen(Object.fromEntries(widgetIds.map((id) => [id, next])));
+  };
+
+  const viewTitles = { space: 'spaces', profile: 'profile', goals: 'goals', calendar: 'calendar' };
+
   return (
-    <main className={isMenuOpen ? 'app' : 'app menu-collapsed'} style={{ '--space-image': `url(${space.image})`, '--space-tint': space.tint, '--accent': space.accent, '--accent-2': space.accent2 }}>
+    <main className={isMenuOpen ? 'app panel-open' : 'app'} style={{ '--space-image': `url(${space.image})`, '--space-tint': space.tint, '--accent': space.accent, '--accent-2': space.accent2 }}>
       <Backdrop activeVideo={activeVideo} videoStarted={videoStarted} space={space} />
 
-      <aside className="sidebar" aria-label="lock in menu">
-        <div className="brand">
-          <button className="brand-mark" onClick={() => setIsMenuOpen((value) => !value)} aria-label="toggle menu">
-            {isMenuOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-          </button>
-          {isMenuOpen && (
-            <div>
-              <strong>lock in</strong>
-              <span>study softly, together</span>
-            </div>
-          )}
+      <aside className="rail" aria-label="lock in navigation">
+        <div className="rail-logo" title="lock in" aria-label="lock in">
+          <LockKeyhole size={20} />
         </div>
 
-        <nav className="main-nav">
-          <NavButton icon={<Home size={18} />} label="study space" active={activeView === 'space'} open={isMenuOpen} onClick={() => setActiveView('space')} />
-          <NavButton icon={<UserCircle size={18} />} label="profile" active={activeView === 'profile'} open={isMenuOpen} onClick={() => setActiveView('profile')} />
-          <NavButton icon={<Goal size={18} />} label="goal tracking" active={activeView === 'goals'} open={isMenuOpen} onClick={() => setActiveView('goals')} />
-          <NavButton icon={<CalendarDays size={18} />} label="calendar" active={activeView === 'calendar'} open={isMenuOpen} onClick={() => setActiveView('calendar')} />
+        <nav className="rail-section rail-top" aria-label="pages">
+          <RailButton icon={<LayoutGrid size={19} />} label="spaces" active={isMenuOpen && activeView === 'space'} onClick={() => openView('space')} />
+          <RailButton icon={<UserCircle size={19} />} label="profile" active={isMenuOpen && activeView === 'profile'} onClick={() => openView('profile')} />
+          <RailButton icon={<Goal size={19} />} label="goals" active={isMenuOpen && activeView === 'goals'} onClick={() => openView('goals')} />
+          <RailButton icon={<CalendarDays size={19} />} label="calendar" active={isMenuOpen && activeView === 'calendar'} onClick={() => openView('calendar')} />
         </nav>
 
-        {isMenuOpen && (
-          <div className="menu-content">
-            {activeView === 'space' && (
-              <>
-                <div className="search-box">
-                  <Search size={16} />
-                  <input value={spaceQuery} onChange={(event) => setSpaceQuery(event.target.value)} placeholder="search spaces" />
-                </div>
-                <div className="category-list">
-                  {categories.map((item) => (
-                    <button key={item} className={item === category ? 'active' : ''} onClick={() => setCategory(item)}>
-                      {item}
-                    </button>
-                  ))}
-                </div>
-                <div className="space-list">
-                  {visibleSpaces.map((item) => (
-                    <button
-                      className={item.id === activeSpace ? 'space-button active' : 'space-button'}
-                      key={item.id}
-                      onClick={() => {
-                        setActiveSpace(item.id);
-                        setVideoStarted(false);
-                      }}
-                    >
-                      <img src={item.image} alt="" />
-                      <span>
-                        <strong>{item.name}</strong>
-                        <small>{item.mood} · {item.category}</small>
-                      </span>
-                      <ChevronRight size={16} />
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+        <div className="rail-spacer" />
+        <div className="rail-divider" aria-hidden="true" />
 
-            {activeView === 'profile' && (
-              <AuthPanel
-                user={user}
-                authMode={authMode}
-                setAuthMode={setAuthMode}
-                authForm={authForm}
-                setAuthForm={setAuthForm}
-                onSubmit={handleAuth}
-                onGoogle={signInWithGoogle}
-                onSignOut={() => setUser(null)}
-              />
-            )}
-
-            {activeView === 'goals' && (
-              <GoalPanel settings={settings} setSettings={setSettings} stats={stats} todayMinutes={todayMinutes} weekMinutes={weekMinutes} />
-            )}
-
-            {activeView === 'calendar' && (
-              <CalendarPanel
-                provider={calendarProvider}
-                setProvider={setCalendarProvider}
-                synced={calendarSynced}
-                setSynced={setCalendarSynced}
-                calendarUrl={calendarUrl}
-              />
-            )}
-          </div>
-        )}
+        <nav className="rail-section rail-bottom" aria-label="widgets">
+          <RailButton icon={<Timer size={19} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
+          <RailButton icon={<ListTodo size={19} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
+          <RailButton icon={<Target size={19} />} label="goals widget" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
+          <RailButton icon={<BarChart3 size={19} />} label="progress" active={widgetsOpen.progress} onClick={() => toggleWidget('progress')} />
+          <RailButton icon={<Users size={19} />} label="room" active={widgetsOpen.room} onClick={() => toggleWidget('room')} />
+          <RailButton icon={<MoreHorizontal size={19} />} label={allWidgetsOpen ? 'hide all widgets' : 'show all widgets'} active={allWidgetsOpen} onClick={toggleAllWidgets} />
+        </nav>
       </aside>
+
+      <div className={isMenuOpen ? 'side-flyout open' : 'side-flyout'} aria-hidden={!isMenuOpen}>
+        <div className="flyout-head">
+          <strong>{viewTitles[activeView]}</strong>
+          <button className="flyout-collapse" onClick={() => setIsMenuOpen(false)} aria-label="collapse panel">
+            <ChevronLeft size={18} />
+          </button>
+        </div>
+        <div className="menu-content">
+          {activeView === 'space' && (
+            <>
+              <div className="search-box">
+                <Search size={16} />
+                <input value={spaceQuery} onChange={(event) => setSpaceQuery(event.target.value)} placeholder="search spaces" />
+              </div>
+              <div className="category-list">
+                {categories.map((item) => (
+                  <button key={item} className={item === category ? 'active' : ''} onClick={() => setCategory(item)}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <div className="space-list">
+                {visibleSpaces.map((item) => (
+                  <button
+                    className={item.id === activeSpace ? 'space-button active' : 'space-button'}
+                    key={item.id}
+                    onClick={() => {
+                      setActiveSpace(item.id);
+                      setVideoStarted(false);
+                    }}
+                  >
+                    <img src={item.image} alt="" />
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.mood} · {item.category}</small>
+                    </span>
+                    <ChevronRight size={16} />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {activeView === 'profile' && (
+            <AuthPanel
+              user={user}
+              authMode={authMode}
+              setAuthMode={setAuthMode}
+              authForm={authForm}
+              setAuthForm={setAuthForm}
+              onSubmit={handleAuth}
+              onGoogle={signInWithGoogle}
+              onSignOut={() => setUser(null)}
+            />
+          )}
+
+          {activeView === 'goals' && (
+            <GoalPanel settings={settings} setSettings={setSettings} stats={stats} todayMinutes={todayMinutes} weekMinutes={weekMinutes} />
+          )}
+
+          {activeView === 'calendar' && (
+            <CalendarPanel
+              provider={calendarProvider}
+              setProvider={setCalendarProvider}
+              synced={calendarSynced}
+              setSynced={setCalendarSynced}
+              calendarUrl={calendarUrl}
+            />
+          )}
+        </div>
+      </div>
 
       <section className="stage" ref={stageRef} aria-label="study space">
         <header className="topbar">
@@ -378,25 +422,35 @@ function App() {
           </button>
         )}
 
-        <DraggableWidget id="timer" title="timer" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
-          <TimerWidget mode={mode} selectMode={selectMode} secondsLeft={secondsLeft} settings={settings} isRunning={isRunning} setIsRunning={setIsRunning} />
-        </DraggableWidget>
+        {widgetsOpen.timer && (
+          <DraggableWidget id="timer" title="timer" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
+            <TimerWidget mode={mode} selectMode={selectMode} secondsLeft={secondsLeft} settings={settings} isRunning={isRunning} setIsRunning={setIsRunning} />
+          </DraggableWidget>
+        )}
 
-        <DraggableWidget id="tasks" title="tasks" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
-          <TasksWidget tasks={tasks} setTasks={setTasks} newTask={newTask} setNewTask={setNewTask} addTask={addTask} completedTasks={completedTasks} />
-        </DraggableWidget>
+        {widgetsOpen.tasks && (
+          <DraggableWidget id="tasks" title="tasks" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
+            <TasksWidget tasks={tasks} setTasks={setTasks} newTask={newTask} setNewTask={setNewTask} addTask={addTask} completedTasks={completedTasks} />
+          </DraggableWidget>
+        )}
 
-        <DraggableWidget id="goals" title="goals" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
-          <MiniGoalWidget settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />
-        </DraggableWidget>
+        {widgetsOpen.goals && (
+          <DraggableWidget id="goals" title="goals" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
+            <MiniGoalWidget settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />
+          </DraggableWidget>
+        )}
 
-        <DraggableWidget id="progress" title="progress" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
-          <ProgressWidget stats={stats} weekMinutes={weekMinutes} tasks={tasks} completedTasks={completedTasks} settings={settings} />
-        </DraggableWidget>
+        {widgetsOpen.progress && (
+          <DraggableWidget id="progress" title="progress" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
+            <ProgressWidget stats={stats} weekMinutes={weekMinutes} tasks={tasks} completedTasks={completedTasks} settings={settings} />
+          </DraggableWidget>
+        )}
 
-        <DraggableWidget id="room" title="room" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
-          <RoomWidget roomName={roomName} setRoomName={setRoomName} roomLink={roomLink} user={user} />
-        </DraggableWidget>
+        {widgetsOpen.room && (
+          <DraggableWidget id="room" title="room" positions={widgetPositions} onMove={moveWidget} stageRef={stageRef}>
+            <RoomWidget roomName={roomName} setRoomName={setRoomName} roomLink={roomLink} user={user} />
+          </DraggableWidget>
+        )}
 
         <div className="video-dock">
           <form
@@ -440,6 +494,15 @@ function NavButton({ icon, label, active, open, onClick }) {
     <button className={active ? 'nav-button active' : 'nav-button'} onClick={onClick} aria-label={label}>
       <span className="nav-icon">{icon}</span>
       <span className="nav-label" aria-hidden={!open}>{label}</span>
+      <span className="nav-tooltip" role="tooltip">{label}</span>
+    </button>
+  );
+}
+
+function RailButton({ icon, label, active, onClick }) {
+  return (
+    <button className={active ? 'rail-button active' : 'rail-button'} onClick={onClick} aria-label={label} aria-pressed={active}>
+      {icon}
       <span className="nav-tooltip" role="tooltip">{label}</span>
     </button>
   );
