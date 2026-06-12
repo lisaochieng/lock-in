@@ -31,7 +31,7 @@ a {
 .app {
   position: relative;
   display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
   min-height: 100vh;
   overflow: hidden;
 }
@@ -1227,8 +1227,8 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  width: 60px;
+  gap: 4px;
+  width: 76px;
   height: 100vh;
   padding: 12px 0;
   border-right: 1px solid color-mix(in srgb, var(--accent, #ffffff) 18%, rgba(255, 255, 255, 0.12));
@@ -1271,58 +1271,53 @@ h1 {
 
 .rail-button {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 66px;
+  padding: 7px 2px 6px;
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
   color: rgba(255, 248, 235, 0.72);
   cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.rail-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+
+.rail-label {
+  font-size: 0.62rem;
+  line-height: 1.1;
+  text-align: center;
+  letter-spacing: 0.01em;
 }
 
 .rail-button:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff8eb;
-  transform: translateY(-1px);
 }
 
 .rail-button.active {
-  border-color: color-mix(in srgb, var(--accent, #f7da90) 55%, transparent);
-  background: color-mix(in srgb, var(--accent, #f7da90) 18%, transparent);
-  color: #fff8eb;
-}
-
-.rail-button.active::before {
-  content: '';
-  position: absolute;
-  left: -8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent, #f7da90);
-}
-
-.rail-button:hover .nav-tooltip,
-.rail-button:focus-visible .nav-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(-50%) translateX(0);
+  background: color-mix(in srgb, var(--accent, #f7da90) 16%, transparent);
+  color: var(--accent, #f7da90);
 }
 
 .side-flyout {
   position: fixed;
-  left: 60px;
+  left: 76px;
   top: 0;
   bottom: 0;
   z-index: 4;
   display: flex;
   flex-direction: column;
-  width: min(320px, calc(100vw - 60px));
+  width: min(320px, calc(100vw - 76px));
   padding: 16px 14px;
   border-right: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(10, 13, 12, 0.84);
@@ -1379,13 +1374,59 @@ h1 {
 
 @media (max-width: 980px) {
   .app {
-    grid-template-columns: 60px minmax(0, 1fr);
+    grid-template-columns: 76px minmax(0, 1fr);
     overflow: visible;
   }
 
   .side-flyout {
-    width: min(340px, calc(100vw - 60px));
+    width: min(340px, calc(100vw - 76px));
   }
+}
+
+/* timer widget — editable durations + full break labels */
+.timer-tabs button {
+  font-size: 0.8rem;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.timer-durations {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.timer-durations label {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.timer-durations label span {
+  font-size: 0.68rem;
+  color: rgba(255, 249, 235, 0.62);
+  text-align: center;
+}
+
+.timer-durations input {
+  width: 100%;
+  min-height: 32px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+/* smooth accent transitions when switching space themes */
+.rail-logo,
+.rail-button,
+.timer-controls .primary,
+.category-list button,
+.auth-tabs button,
+.provider-grid button,
+.timer-tabs button,
+.space-button,
+.nav-button {
+  transition: background-color 0.5s ease, border-color 0.5s ease, color 0.45s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
