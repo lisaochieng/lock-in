@@ -31,13 +31,9 @@ a {
 .app {
   position: relative;
   display: grid;
-  grid-template-columns: 328px minmax(0, 1fr);
+  grid-template-columns: 60px minmax(0, 1fr);
   min-height: 100vh;
   overflow: hidden;
-}
-
-.app.menu-collapsed {
-  grid-template-columns: 78px minmax(0, 1fr);
 }
 
 .background,
@@ -1216,6 +1212,187 @@ h1 {
   .nav-button,
   .nav-label,
   .nav-tooltip {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* icon rail + flyout panel (lifeat-style navigation)               */
+/* ---------------------------------------------------------------- */
+
+.rail {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 60px;
+  height: 100vh;
+  padding: 12px 0;
+  border-right: 1px solid color-mix(in srgb, var(--accent, #ffffff) 18%, rgba(255, 255, 255, 0.12));
+  background: rgba(8, 11, 10, 0.72);
+  backdrop-filter: blur(20px);
+  transition: border-color 0.5s ease;
+}
+
+.rail-logo {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent, #f7da90) 24%, transparent);
+  color: #fff8eb;
+  transition: background 0.5s ease;
+}
+
+.rail-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.rail-spacer {
+  flex: 1 1 auto;
+  min-height: 8px;
+}
+
+.rail-divider {
+  width: 26px;
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.rail-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(255, 248, 235, 0.72);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.rail-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff8eb;
+  transform: translateY(-1px);
+}
+
+.rail-button.active {
+  border-color: color-mix(in srgb, var(--accent, #f7da90) 55%, transparent);
+  background: color-mix(in srgb, var(--accent, #f7da90) 18%, transparent);
+  color: #fff8eb;
+}
+
+.rail-button.active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent, #f7da90);
+}
+
+.rail-button:hover .nav-tooltip,
+.rail-button:focus-visible .nav-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+
+.side-flyout {
+  position: fixed;
+  left: 60px;
+  top: 0;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  width: min(320px, calc(100vw - 60px));
+  padding: 16px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 13, 12, 0.84);
+  backdrop-filter: blur(22px);
+  box-shadow: 24px 0 60px rgba(0, 0, 0, 0.28);
+  transform: translateX(-100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, visibility 0.28s;
+}
+
+.side-flyout.open {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.flyout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.flyout-head strong {
+  font-size: 1rem;
+  text-transform: lowercase;
+}
+
+.flyout-collapse {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff8eb;
+  cursor: pointer;
+}
+
+.flyout-collapse:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.side-flyout .menu-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+@media (max-width: 980px) {
+  .app {
+    grid-template-columns: 60px minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .side-flyout {
+    width: min(340px, calc(100vw - 60px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .rail-button,
+  .rail-logo,
+  .side-flyout {
     transition: none;
   }
 }
