@@ -1,0 +1,68 @@
+<!-- @dsCard group="Widgets" name="Focus timer" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Focus timer</title>
+<style>
+  :root {
+    --accent: #f1d37f;
+    --timer-progress: 62%;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px;
+    background: radial-gradient(circle at 22% 18%, #15211c, #0c100e 72%); color: #fff8eb;
+  }
+  .widget {
+    width: min(340px, calc(100vw - 48px)); padding: 14px;
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, rgba(255, 255, 255, 0.16)); border-radius: 8px;
+    background: rgba(9, 13, 12, 0.58); box-shadow: 0 26px 70px rgba(0, 0, 0, 0.25);
+  }
+  .panel-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .panel-title h2 { flex: 1; margin: 0; font-size: 0.98rem; }
+  .timer-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .timer-tabs button {
+    min-height: 36px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08); color: rgba(255, 248, 235, 0.74); font-size: 0.8rem; cursor: pointer;
+  }
+  .timer-tabs button.active {
+    border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent); color: #fff8eb;
+  }
+  .timer-ring {
+    display: grid; place-items: center; width: 220px; aspect-ratio: 1; margin: 20px auto; border-radius: 50%;
+    background:
+      radial-gradient(circle at center, rgba(15, 21, 19, 0.94) 0 61%, transparent 62%),
+      conic-gradient(var(--accent) var(--timer-progress), rgba(255, 255, 255, 0.14) 0);
+  }
+  .timer-ring span { font-variant-numeric: tabular-nums; font-size: 3.4rem; font-weight: 850; }
+  .timer-controls { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; }
+  .timer-controls button {
+    min-height: 44px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08); color: #fff8eb; cursor: pointer;
+  }
+  .timer-controls .primary {
+    border-color: color-mix(in srgb, var(--accent) 88%, transparent); background: var(--accent);
+    color: #161817; font-weight: 800;
+  }
+</style>
+</head>
+<body>
+  <section class="widget">
+    <div class="panel-title"><h2>focus timer</h2></div>
+    <div class="timer-tabs">
+      <button class="active">focus</button>
+      <button>short break</button>
+      <button>long break</button>
+    </div>
+    <div class="timer-ring"><span>17:42</span></div>
+    <div class="timer-controls">
+      <button class="primary">pause</button>
+      <button>reset</button>
+    </div>
+  </section>
+</body>
+</html>

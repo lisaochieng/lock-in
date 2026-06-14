@@ -1,0 +1,53 @@
+<!-- @dsCard group="Navigation" name="Icon rail" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Icon rail</title>
+<style>
+  :root {
+    --accent: #f7da90;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex;
+    background: radial-gradient(circle at 30% 18%, #15211c, #0c100e 72%); color: #fff8eb;
+  }
+  .rail {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; width: 76px; height: 100vh;
+    padding: 12px 0; border-right: 1px solid color-mix(in srgb, var(--accent) 18%, rgba(255, 255, 255, 0.12));
+    background: rgba(8, 11, 10, 0.72);
+  }
+  .rail-logo {
+    display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 4px; border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 24%, transparent); color: #fff8eb; font-size: 1.1rem;
+  }
+  .rail-button {
+    display: flex; flex-direction: column; align-items: center; gap: 3px; width: 66px;
+    padding: 7px 2px 6px; border: 1px solid transparent; border-radius: 12px; background: transparent;
+    color: rgba(255, 248, 235, 0.72); cursor: pointer;
+  }
+  .rail-icon { font-size: 1.15rem; line-height: 1; }
+  .rail-label { font-size: 0.62rem; line-height: 1.1; text-align: center; }
+  .rail-button.active { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .rail-divider { width: 26px; height: 1px; margin: 4px 0; background: rgba(255, 255, 255, 0.16); }
+  .rail-spacer { flex: 1 1 auto; }
+</style>
+</head>
+<body>
+  <nav class="rail">
+    <div class="rail-logo">🔒</div>
+    <button class="rail-button active"><span class="rail-icon">🏠</span><span class="rail-label">home</span></button>
+    <button class="rail-button"><span class="rail-icon">🗂️</span><span class="rail-label">spaces</span></button>
+    <button class="rail-button"><span class="rail-icon">⏱️</span><span class="rail-label">timer</span></button>
+    <button class="rail-button"><span class="rail-icon">✓</span><span class="rail-label">tasks</span></button>
+    <div class="rail-divider"></div>
+    <button class="rail-button"><span class="rail-icon">📊</span><span class="rail-label">stats</span></button>
+    <button class="rail-button"><span class="rail-icon">🎯</span><span class="rail-label">goals</span></button>
+    <div class="rail-spacer"></div>
+    <button class="rail-button"><span class="rail-icon">⚙️</span><span class="rail-label">settings</span></button>
+  </nav>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!-- @dsCard group="Widgets" name="Profile card" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Profile card</title>
+<style>
+  :root {
+    --accent: #f1d37f;
+    --accent-2: #9bd6c4;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px;
+    background: radial-gradient(circle at 22% 18%, #15211c, #0c100e 72%); color: #fff8eb;
+  }
+  .profile-card {
+    width: min(300px, calc(100vw - 48px)); display: grid; gap: 6px; padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; background: rgba(255, 255, 255, 0.07);
+    text-align: center; justify-items: center;
+  }
+  .avatar {
+    display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #171917;
+    font-weight: 900; text-transform: uppercase;
+  }
+  .profile-card strong { font-size: 1rem; }
+  .profile-card span { color: rgba(255, 249, 235, 0.66); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+  <div class="profile-card">
+    <div class="avatar">s</div>
+    <strong>student</strong>
+    <span>student@gmail.com</span>
+    <span>locked in since march</span>
+  </div>
+</body>
+</html>

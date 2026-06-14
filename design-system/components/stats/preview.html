@@ -1,0 +1,55 @@
+<!-- @dsCard group="Widgets" name="Stats & week chart" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stats & week chart</title>
+<style>
+  :root {
+    --accent: #f1d37f;
+    --accent-2: #9bd6c4;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px;
+    background: radial-gradient(circle at 22% 18%, #15211c, #0c100e 72%); color: #fff8eb;
+  }
+  .widget {
+    width: min(360px, calc(100vw - 48px)); padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 8px;
+    background: rgba(9, 13, 12, 0.58); box-shadow: 0 26px 70px rgba(0, 0, 0, 0.25);
+  }
+  .panel-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .panel-title h2 { flex: 1; margin: 0; font-size: 0.98rem; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { display: grid; gap: 5px; min-height: 78px; padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.07); }
+  .stat span { color: rgba(255, 249, 235, 0.66); font-size: 0.78rem; }
+  .stat strong { font-size: 1.08rem; }
+  .week-chart { display: grid; grid-template-columns: repeat(7, 1fr); align-items: end; gap: 8px; height: 104px; margin-top: 16px; }
+  .week-chart div { display: grid; grid-template-rows: 1fr 18px; align-items: end; height: 100%; gap: 6px; }
+  .week-chart .bar { display: block; width: 100%; min-height: 8px; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
+  .week-chart small { color: rgba(255, 249, 235, 0.62); text-align: center; }
+</style>
+</head>
+<body>
+  <section class="widget">
+    <div class="panel-title"><h2>this week</h2></div>
+    <div class="stat-grid">
+      <div class="stat"><span>focus time</span><strong>12h 40m</strong></div>
+      <div class="stat"><span>sessions</span><strong>23</strong></div>
+      <div class="stat"><span>streak</span><strong>6 days</strong></div>
+    </div>
+    <div class="week-chart">
+      <div><span class="bar" style="height:40%"></span><small>m</small></div>
+      <div><span class="bar" style="height:70%"></span><small>t</small></div>
+      <div><span class="bar" style="height:55%"></span><small>w</small></div>
+      <div><span class="bar" style="height:90%"></span><small>t</small></div>
+      <div><span class="bar" style="height:60%"></span><small>f</small></div>
+      <div><span class="bar" style="height:30%"></span><small>s</small></div>
+      <div><span class="bar" style="height:45%"></span><small>s</small></div>
+    </div>
+  </section>
+</body>
+</html>
