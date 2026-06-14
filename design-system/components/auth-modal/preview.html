@@ -1,0 +1,69 @@
+<!-- @dsCard group="Components" name="Auth modal" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Auth modal</title>
+<style>
+  :root {
+    --accent: #f0d07d;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px;
+    background: linear-gradient(130deg, #0e1714, #1c4a40 45%, #3a2a3a);
+    color: #fff8eb;
+  }
+  .hero-modal {
+    position: relative; width: 100%; max-width: 384px; display: grid; gap: 14px;
+    padding: 30px 26px 26px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 18px;
+    background: rgba(15, 21, 19, 0.86); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45); text-align: left;
+  }
+  .hero-modal-close {
+    position: absolute; top: 14px; right: 14px; display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06); color: rgba(255, 248, 235, 0.74); cursor: pointer;
+  }
+  .hero-modal-title { margin: 0; font-size: 1.4rem; font-weight: 800; color: #fff9ef; }
+  .hero-modal-subtitle { margin: -6px 0 2px; font-size: 0.9rem; color: rgba(255, 249, 235, 0.62); }
+  .hero-google {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 9px; background: rgba(255, 255, 255, 0.08);
+    color: #fff8eb; font-weight: 600; cursor: pointer;
+  }
+  .hero-divider { display: flex; align-items: center; gap: 10px; color: rgba(255, 249, 235, 0.42); font-size: 0.8rem; }
+  .hero-divider::before, .hero-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.14); }
+  .hero-form { display: grid; gap: 12px; }
+  .hero-form label { display: grid; gap: 6px; }
+  .hero-form label > span { font-size: 0.8rem; color: rgba(255, 249, 235, 0.66); }
+  .hero-form input {
+    width: 100%; min-height: 38px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08); color: #fff9ef; outline: none; padding: 0 11px; font: inherit;
+  }
+  .hero-submit {
+    min-height: 46px; margin-top: 4px; border: 1px solid rgba(247, 218, 144, 0.88); border-radius: 9px;
+    background: var(--accent); color: #161817; font-weight: 800; cursor: pointer;
+  }
+  .hero-switch { margin: 2px 0 0; text-align: center; font-size: 0.88rem; color: rgba(255, 249, 235, 0.62); }
+  .hero-switch button { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+  <div class="hero-modal">
+    <button class="hero-modal-close" aria-label="close">✕</button>
+    <h2 class="hero-modal-title">create your account</h2>
+    <p class="hero-modal-subtitle">start studying softly in seconds.</p>
+    <button class="hero-google">✦ continue with Google</button>
+    <div class="hero-divider"><span>or</span></div>
+    <form class="hero-form" onsubmit="return false">
+      <label><span>name</span><input placeholder="your name" /></label>
+      <label><span>email</span><input type="email" placeholder="you@email.com" /></label>
+      <label><span>password</span><input type="password" placeholder="••••••••" /></label>
+      <button class="hero-submit" type="submit">sign up</button>
+    </form>
+    <p class="hero-switch">already have an account? <button type="button">log in</button></p>
+  </div>
+</body>
+</html>
