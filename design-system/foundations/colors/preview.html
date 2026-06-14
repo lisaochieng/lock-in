@@ -1,0 +1,53 @@
+<!-- @dsCard group="Foundations" name="Color palette" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Color palette</title>
+<style>
+  :root {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 40px;
+    background: radial-gradient(circle at 20% 18%, #15211c, #0c100e 72%);
+    color: #fff8eb;
+  }
+  h2 { margin: 0 0 4px; font-size: 1.1rem; }
+  p { margin: 0 0 24px; color: rgba(255, 249, 235, 0.6); font-size: 0.85rem; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .swatch {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .chip { height: 78px; }
+  .meta { padding: 10px 12px; }
+  .meta strong { display: block; font-size: 0.82rem; }
+  .meta span { font-size: 0.72rem; color: rgba(255, 249, 235, 0.58); }
+</style>
+</head>
+<body>
+  <h2>Color palette</h2>
+  <p>Calm dark base with a warm gold accent, mint secondary, and a soft pink highlight.</p>
+  <div class="grid">
+    <div class="swatch"><div class="chip" style="background:#101411"></div><div class="meta"><strong>Base</strong><span>#101411</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#0c100e"></div><div class="meta"><strong>Base deep</strong><span>#0c100e</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#fff8eb"></div><div class="meta"><strong>Ink</strong><span>#fff8eb</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#f0d07d"></div><div class="meta"><strong>Accent</strong><span>#f0d07d</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#9bd6c4"></div><div class="meta"><strong>Accent 2</strong><span>#9bd6c4</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#e8b7d4"></div><div class="meta"><strong>Pink</strong><span>#e8b7d4</span></div></div>
+    <div class="swatch"><div class="chip" style="background:rgba(255,255,255,0.07)"></div><div class="meta"><strong>Surface</strong><span>rgba(255,255,255,.07)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:rgba(255,255,255,0.14)"></div><div class="meta"><strong>Line</strong><span>rgba(255,255,255,.14)</span></div></div>
+  </div>
+</body>
+</html>

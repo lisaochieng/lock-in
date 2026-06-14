@@ -1,0 +1,89 @@
+<!-- @dsCard group="Components" name="Buttons & pills" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Buttons & pills</title>
+<style>
+  :root {
+    --accent: #f0d07d;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 40px;
+    background: radial-gradient(circle at 20% 18%, #15211c, #0c100e 72%);
+    color: #fff8eb;
+  }
+  .stack { display: grid; gap: 20px; justify-items: center; }
+  .group { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; }
+  .hero-button {
+    min-width: 148px;
+    min-height: 50px;
+    padding: 0 26px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff8eb;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .hero-button-primary {
+    border-color: rgba(247, 218, 144, 0.88);
+    background: var(--accent);
+    color: #161817;
+    font-weight: 800;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 248, 235, 0.74);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .pill.active {
+    border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: #fff8eb;
+  }
+  .mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 249, 235, 0.82);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+  <div class="stack">
+    <div class="group">
+      <button class="hero-button">log in</button>
+      <button class="hero-button hero-button-primary">sign up</button>
+    </div>
+    <div class="group">
+      <button class="pill active">focus</button>
+      <button class="pill">short break</button>
+      <button class="pill">long break</button>
+    </div>
+    <span class="mark">🔒 a calm study room</span>
+  </div>
+</body>
+</html>
