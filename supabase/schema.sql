@@ -83,6 +83,17 @@ create table if not exists public.favorites (
   unique (user_id, space_id)
 );
 
+-- -----------------------------------------------------------
+-- profiles  (public mirror of auth.users for display name/avatar)
+-- See migration 0003 for the signup trigger + realtime setup.
+-- -----------------------------------------------------------
+create table if not exists public.profiles (
+  id          uuid primary key references auth.users (id) on delete cascade,
+  name        text,
+  avatar_url  text,
+  updated_at  timestamptz not null default now()
+);
+
 -- ===========================================================
 -- Indexes (lookups by owner)
 -- ===========================================================
@@ -102,6 +113,7 @@ alter table public.tasks        enable row level security;
 alter table public.rooms        enable row level security;
 alter table public.room_members enable row level security;
 alter table public.favorites    enable row level security;
+alter table public.profiles     enable row level security;
 
 -- Helper: is the given user a member of the given room?
 -- SECURITY DEFINER bypasses RLS so the room_members policy below
@@ -138,6 +150,18 @@ create policy "tasks own rows" on public.tasks
 drop policy if exists "favorites own rows" on public.favorites;
 create policy "favorites own rows" on public.favorites
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ---------- profiles ----------
+-- Any signed-in user can read profiles; a user writes only their own.
+drop policy if exists "profiles read authenticated" on public.profiles;
+create policy "profiles read authenticated" on public.profiles
+  for select using (auth.role() = 'authenticated');
+drop policy if exists "profiles insert own" on public.profiles;
+create policy "profiles insert own" on public.profiles
+  for insert with check (auth.uid() = id);
+drop policy if exists "profiles update own" on public.profiles;
+create policy "profiles update own" on public.profiles
+  for update using (auth.uid() = id) with check (auth.uid() = id);
 
 -- ---------- rooms ----------
 -- Owner (created_by) can do anything; members may read rooms they belong to.
