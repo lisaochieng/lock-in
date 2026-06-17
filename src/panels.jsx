@@ -8,7 +8,6 @@ import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
-import { getCurrentUser } from './lib/auth';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
@@ -137,24 +136,13 @@ const fmtClock = (iso) =>
 
 const sessionLabel = { focus: 'focus', shortBreak: 'short break', longBreak: 'long break' };
 
-export function CalendarPanel({ theme, userId: userIdProp }) {
+export function CalendarPanel({ theme, userId }) {
   const now = new Date();
-  const [userId, setUserId] = useState(userIdProp ?? null);
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [sessionsByDay, setSessionsByDay] = useState({});
   const [tasksByDay, setTasksByDay] = useState({});
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  // Resolve the signed-in user if the parent didn't hand us an id.
-  useEffect(() => {
-    if (userIdProp) { setUserId(userIdProp); return undefined; }
-    let active = true;
-    getCurrentUser()
-      .then(({ user }) => { if (active) setUserId(user?.id ?? null); })
-      .catch(() => { if (active) setUserId(null); });
-    return () => { active = false; };
-  }, [userIdProp]);
 
   // Fetch on mount and whenever the user or the visible month changes.
   useEffect(() => {
