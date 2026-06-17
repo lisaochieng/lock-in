@@ -3,8 +3,8 @@
    Warm beige / sage / mauve, Cormorant Garamond serif.
    Faithful port of the claude.ai/design "lock-tf-in" Landing.html.
    =========================================================== */
-import React, { useEffect, useRef } from 'react';
-import { ArrowRight } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowRight, Mail, LockKeyhole, Sparkles, X } from 'lucide-react';
 import { spaces } from './spaces';
 
 // real ambience thumbnail per vibe for the spaces showcase
@@ -28,8 +28,117 @@ const MOODS = [
   { category: 'night city', title: 'midnight skyline', note: 'late grind, deep flow', tag: 'night city' },
 ];
 
-export default function Landing({ onEnter }) {
+// Sage / cream auth palette so the overlay sits naturally on the hero.
+const AUTH = {
+  ink: '#3b4034',
+  dim: 'rgba(59,64,52,0.66)',
+  faint: 'rgba(59,64,52,0.45)',
+  accent: '#55624f',
+  accentInk: '#f6f3ec',
+  card: '#f6f3ec',
+  field: '#ffffff',
+  border: 'rgba(85,98,79,0.22)',
+};
+
+function AuthOverlay({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle }) {
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null); // { type: 'error' | 'info', text }
+
+  const field = {
+    width: '100%', background: AUTH.field, border: `1px solid ${AUTH.border}`, color: AUTH.ink,
+    borderRadius: 10, padding: '11px 12px 11px 36px', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const email = form.email.trim().toLowerCase();
+    const password = form.password;
+    if (!email || !password) { setMessage({ type: 'error', text: 'enter your email and password' }); return; }
+    setBusy(true);
+    setMessage(null);
+    const res = mode === 'signup'
+      ? await onSignUp?.(email, password, form.name.trim() || email.split('@')[0])
+      : await onSignIn?.(email, password);
+    setBusy(false);
+    if (res?.error) { setMessage({ type: 'error', text: res.error.message || 'something went wrong' }); return; }
+    if (res?.needsConfirmation) { setMessage({ type: 'info', text: 'check your email to confirm your account' }); return; }
+    // success: the app's onAuthStateChange takes over and routes to the app.
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(40,46,38,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 'min(420px, 94vw)', background: AUTH.card, color: AUTH.ink, borderRadius: 22, padding: 28, boxShadow: '0 30px 80px -24px rgba(20,26,18,0.55)', position: 'relative' }}
+      >
+        <button
+          type="button" onClick={onClose} aria-label="close"
+          style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: AUTH.faint, cursor: 'pointer', display: 'flex', padding: 4 }}
+        ><X size={18} /></button>
+
+        <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, marginBottom: 4 }}>
+          {mode === 'signup' ? 'create your account' : 'welcome back'}
+        </div>
+        <div style={{ fontSize: 13, color: AUTH.dim, marginBottom: 18 }}>
+          {mode === 'signup' ? 'save your tasks, goals and streaks across devices.' : 'sign in to pick up where you left off.'}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {[['signin', 'sign in'], ['signup', 'create account']].map(([key, label]) => (
+            <button
+              key={key} type="button" onClick={() => { setMode(key); setMessage(null); }}
+              style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', color: mode === key ? AUTH.accentInk : AUTH.ink, background: mode === key ? AUTH.accent : 'transparent', border: `1px solid ${mode === key ? 'transparent' : AUTH.border}` }}
+            >{label}</button>
+          ))}
+        </div>
+
+        <button
+          type="button" onClick={() => onGoogle?.()}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 0', borderRadius: 10, fontSize: 13.5, fontFamily: 'inherit', cursor: 'pointer', color: AUTH.ink, background: AUTH.field, border: `1px solid ${AUTH.border}` }}
+        ><Sparkles size={16} /> continue with Google</button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: AUTH.faint, fontSize: 12, margin: '14px 0' }}>
+          <span style={{ flex: 1, height: 1, background: AUTH.border }} /> or <span style={{ flex: 1, height: 1, background: AUTH.border }} />
+        </div>
+
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {mode === 'signup' && (
+            <input
+              value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="name" aria-label="name" style={{ ...field, paddingLeft: 12 }}
+            />
+          )}
+          <label style={{ position: 'relative', display: 'block' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><Mail size={15} /></span>
+            <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" placeholder="email" aria-label="email" style={field} />
+          </label>
+          <label style={{ position: 'relative', display: 'block' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><LockKeyhole size={15} /></span>
+            <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" placeholder="password" aria-label="password" style={field} />
+          </label>
+          <button
+            type="submit" disabled={busy}
+            style={{ width: '100%', padding: '12px 0', borderRadius: 10, fontSize: 14, fontWeight: 500, fontFamily: 'inherit', cursor: busy ? 'default' : 'pointer', color: AUTH.accentInk, background: AUTH.accent, border: 'none', opacity: busy ? 0.7 : 1 }}
+          >{busy ? 'one moment…' : (mode === 'signup' ? 'create account' : 'sign in')}</button>
+        </form>
+
+        {message && (
+          <div style={{ marginTop: 14, fontSize: 12.5, lineHeight: 1.5, color: message.type === 'error' ? '#9b4a3f' : AUTH.accent }}>
+            {message.text}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Landing({ onEnter, onSignIn, onSignUp, onGoogle }) {
   const rootRef = useRef(null);
+  const [authMode, setAuthMode] = useState(null); // null | 'signin' | 'signup'
 
   useEffect(() => {
     const els = rootRef.current?.querySelectorAll('.reveal') || [];
@@ -70,8 +179,8 @@ export default function Landing({ onEnter }) {
           </div>
           <div className="wordmark">lock <em>in</em></div>
           <div className="nav-right">
-            <span className="nav-note">a calm focus space</span>
-            <a href="#" onClick={enter} className="pill">open app <ArrowRight size={14} /></a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('signin'); }}>sign in</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('signup'); }} className="pill">create account <ArrowRight size={14} /></a>
           </div>
         </nav>
 
@@ -138,6 +247,17 @@ export default function Landing({ onEnter }) {
           <span>made for deep, quiet hours</span>
         </footer>
       </div>
+
+      {authMode && (
+        <AuthOverlay
+          mode={authMode}
+          setMode={setAuthMode}
+          onClose={() => setAuthMode(null)}
+          onSignIn={onSignIn}
+          onSignUp={onSignUp}
+          onGoogle={onGoogle}
+        />
+      )}
     </div>
   );
 }
