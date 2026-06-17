@@ -4,7 +4,7 @@
    `startAt` skips past each video's intro / title cards.
    =========================================================== */
 
-const unsplash = (id) => `https://images.unsplash.com/photo-${id}?w=400&q=80`;
+const unsplash = (id) => `https://images.unsplash.com/photo-${id}?w=800&h=450&fit=crop&q=90`;
 
 export const spaces = [
   // rain — cool slate greys
