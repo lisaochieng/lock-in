@@ -5,8 +5,8 @@
    =========================================================== */
 import React, { useMemo } from 'react';
 import {
-  Search, ChevronRight, Mail, LockKeyhole, Sparkles, X,
-  CalendarCheck, CalendarDays, Plus, Check, RotateCcw, Heart,
+  Search, ChevronRight, Sparkles, X,
+  CalendarCheck, Plus, Check, RotateCcw, Heart,
 } from 'lucide-react';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -67,9 +67,7 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
   );
 }
 
-export function ProfilePanel({ theme, user, authMode, setAuthMode, authForm, setAuthForm, onSubmit, onGoogle, onSignOut }) {
-  const fieldStyle = { width: '100%', background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'inherit', outline: 'none' };
-
+export function ProfilePanel({ theme, user, onSignOut, onShowHero }) {
   if (user) {
     const sessionRows = [['focus today', '1h 50m'], ['current streak', '3 days'], ['member since', 'jan 2026']];
     return (
@@ -97,37 +95,19 @@ export function ProfilePanel({ theme, user, authMode, setAuthMode, authForm, set
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {[['signin', 'sign in'], ['signup', 'create account']].map(([key, label]) => (
-          <button
-            key={key} onClick={() => setAuthMode(key)} className="segbtn"
-            style={{ color: authMode === key ? theme.accentInk : theme.chipText, background: authMode === key ? theme.accent : theme.chipBg, border: `1px solid ${authMode === key ? 'transparent' : theme.chipBorder}` }}
-          >{label}</button>
-        ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 22 }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent, marginBottom: 16 }}>
+          <Sparkles size={22} />
+        </div>
+        <div style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 600, color: theme.text }}>sign in to sync your data</div>
+        <div style={{ fontSize: 13, color: theme.textDim, lineHeight: 1.5, marginTop: 8 }}>
+          save your tasks, goals, streaks and favourite spaces, and pick up on any device.
+        </div>
       </div>
-      <button onClick={onGoogle} className="calprov" style={{ color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}>
-        <Sparkles size={16} /> continue with Google
+      <button onClick={onShowHero} className="bigbtn" style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk, border: 'none' }}>
+        sign in or create account
       </button>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: theme.textFaint, fontSize: 12 }}>
-        <span style={{ flex: 1, height: 1, background: theme.chipBorder }} /> or <span style={{ flex: 1, height: 1, background: theme.chipBorder }} />
-      </div>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {authMode === 'signup' && (
-          <label style={{ position: 'relative', display: 'block' }}>
-            <input value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="name" style={{ ...fieldStyle, paddingLeft: 12 }} />
-          </label>
-        )}
-        <label style={{ position: 'relative', display: 'block' }}>
-          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: theme.textFaint, display: 'flex' }}><Mail size={15} /></span>
-          <input value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} type="email" placeholder="email" style={fieldStyle} />
-        </label>
-        <label style={{ position: 'relative', display: 'block' }}>
-          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: theme.textFaint, display: 'flex' }}><LockKeyhole size={15} /></span>
-          <input value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} type="password" placeholder="password" style={fieldStyle} />
-        </label>
-        <button type="submit" className="bigbtn" style={{ background: theme.accent, color: theme.accentInk, border: 'none' }}>{authMode === 'signup' ? 'create account' : 'sign in'}</button>
-      </form>
     </div>
   );
 }
