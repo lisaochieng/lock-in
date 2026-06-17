@@ -102,7 +102,7 @@ export default function Landing({ onEnter }) {
               <h3>a space that <em>matches your mind</em></h3>
               <p>choose a scene — rain on a village, snow on a lake, a crackling fire — and the entire space softens to its mood. ambient video, gentle sound, and a living palette do the settling so you can simply begin.</p>
               <div className="stats">
-                <div><div className="n">14</div><div className="l">ambient scenes</div></div>
+                <div><div className="n">26</div><div className="l">ambient scenes</div></div>
                 <div><div className="n">∞</div><div className="l">youtube ambiences</div></div>
                 <div><div className="n">0</div><div className="l">notifications</div></div>
               </div>
@@ -114,7 +114,7 @@ export default function Landing({ onEnter }) {
         <section id="moods">
           <div className="sec-head reveal">
             <h2>a space for <em>every</em> mood</h2>
-            <p>thirteen scenes, each with its own light, sound and colour. pick what your hour needs.</p>
+            <p>dozens of scenes, each with its own light, sound and colour. pick what your hour needs.</p>
           </div>
           <div className="mood-grid">
             {MOODS.map((m) => (

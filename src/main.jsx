@@ -81,6 +81,7 @@ function App() {
 
   const [roomName, setRoomName] = usePersistentState('lockin-room', roomFromUrl || 'exam-week');
   const [activeVideo, setActiveVideo] = useState(spaces.find((s) => s.id === activeSpace)?.video);
+  const [videoStart, setVideoStart] = useState(spaces.find((s) => s.id === activeSpace)?.startAt ?? 10);
   const [customVideoUrl, setCustomVideoUrl] = useState('');
   const [videoStarted, setVideoStarted] = useState(false);
 
@@ -117,6 +118,7 @@ function App() {
   useEffect(() => {
     const nextSpace = spaces.find((item) => item.id === activeSpace) || spaces[0];
     setActiveVideo(nextSpace.video);
+    setVideoStart(nextSpace.startAt ?? 10);
     setVideoStarted(false);
   }, [activeSpace]);
 
@@ -174,7 +176,7 @@ function App() {
 
   const loadCustomVideo = () => {
     const id = extractYouTubeId(customVideoUrl);
-    if (id) { setActiveVideo(id); setVideoStarted(true); }
+    if (id) { setActiveVideo(id); setVideoStart(0); setVideoStarted(true); }
   };
 
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
@@ -195,7 +197,7 @@ function App() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
           <iframe
             title="peaceful study ambience"
-            src={`https://www.youtube.com/embed/${activeVideo}?autoplay=1&mute=0&controls=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
+            src={`https://www.youtube.com/embed/${activeVideo}?autoplay=1&mute=0&controls=1&rel=0&playsinline=1&start=${videoStart}&origin=${encodeURIComponent(window.location.origin)}`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             frameBorder={0}
