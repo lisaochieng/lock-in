@@ -516,7 +516,7 @@ function App() {
             <ProfilePanel theme={theme} user={user} onSignOut={handleSignOut} onShowHero={() => setShowHero(true)} />
           )}
           {panel === 'calendar' && (
-            <CalendarPanel theme={theme} provider={calendarProvider} setProvider={setCalendarProvider} synced={calendarSynced} setSynced={setCalendarSynced} calendarUrl={calendarUrl} />
+            <CalendarPanel theme={theme} userId={user?.id} />
           )}
         </div>
       )}

@@ -1,5 +1,5 @@
 /* ===========================================================
-   Session logging + analytics
+   Session logging + analytics + calendar data
    ---------------------------------------------------------
    Focused helpers around the `sessions` table (and the `tasks`
    table for completed-task counts), built on the shared
@@ -197,15 +197,17 @@ export async function fetchAllTimeStats(userId) {
 /**
  * Sessions for a given calendar month, grouped by day-of-month.
  * `month` is 1-based (1 = January).
- * Returns: { [dayNumber]: [{ id, duration_minutes, created_at }] }
+ * Returns: { [dayNumber]: [{ id, duration_minutes, session_type, created_at }] }
  */
 export async function fetchSessionsByMonth(userId, year, month) {
+  if (!userId) return {};
+
   const start = new Date(year, month - 1, 1);
   const end = new Date(year, month, 1);
 
   const { data, error } = await supabase
     .from('sessions')
-    .select('id, duration_minutes, created_at')
+    .select('id, duration_minutes, session_type, created_at')
     .eq('user_id', userId)
     .gte('created_at', start.toISOString())
     .lt('created_at', end.toISOString())
@@ -223,8 +225,46 @@ export async function fetchSessionsByMonth(userId, year, month) {
     grouped[dayNumber].push({
       id: row.id,
       duration_minutes: row.duration_minutes,
+      session_type: row.session_type,
       created_at: row.created_at,
     });
+  }
+  return grouped;
+}
+
+/**
+ * Completed tasks for a given calendar month, grouped by day-of-month.
+ * `month` is 1-based (1 = January).
+ *
+ * The schema has no `completed_at`, so completed tasks are bucketed by
+ * their `created_at` day — the best available signal for "that day".
+ * Returns: { [dayNumber]: [{ id, title, created_at }] }
+ */
+export async function fetchCompletedTasksByMonth(userId, year, month) {
+  if (!userId) return {};
+
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('id, title, created_at')
+    .eq('user_id', userId)
+    .eq('completed', true)
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString())
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[sessions] fetchCompletedTasksByMonth error:', error);
+    return {};
+  }
+
+  const grouped = {};
+  for (const row of data ?? []) {
+    const dayNumber = new Date(row.created_at).getDate();
+    if (!grouped[dayNumber]) grouped[dayNumber] = [];
+    grouped[dayNumber].push({ id: row.id, title: row.title, created_at: row.created_at });
   }
   return grouped;
 }
