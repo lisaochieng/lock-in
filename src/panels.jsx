@@ -6,12 +6,12 @@
 import React, { useMemo } from 'react';
 import {
   Search, ChevronRight, Mail, LockKeyhole, Sparkles, X,
-  CalendarCheck, CalendarDays, Plus, Check, RotateCcw,
+  CalendarCheck, CalendarDays, Plus, Check, RotateCcw, Heart,
 } from 'lucide-react';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
-export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery, cat, setCat, categories }) {
+export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery, cat, setCat, categories, favorites = [], onToggleFavorite }) {
   const list = useMemo(() => spaces.filter((s) => (
     (cat === 'all' || s.category === cat)
     && `${s.name} ${s.mood} ${s.category}`.toLowerCase().includes(query.toLowerCase())
@@ -39,6 +39,7 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
           ? <div style={{ fontSize: 12.5, color: theme.textFaint, padding: '10px 2px' }}>no spaces match that.</div>
           : list.map((s) => {
             const active = s.id === activeId;
+            const fav = favorites.includes(s.id);
             return (
               <button
                 key={s.id} onClick={() => onSelect(s)} className="spacecard"
@@ -48,6 +49,14 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: 'block', fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>{s.name}</span>
                   <span style={{ display: 'block', fontSize: 11.5, color: theme.textFaint, marginTop: 2 }}>{s.mood} · {s.category}</span>
+                </span>
+                <span
+                  role="button" tabIndex={0} aria-label={fav ? 'remove from favorites' : 'add to favorites'} aria-pressed={fav}
+                  onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(s.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(s.id); } }}
+                  style={{ color: fav ? theme.accent : theme.textFaint, display: 'flex', cursor: 'pointer', padding: 2 }}
+                >
+                  <Heart size={15} fill={fav ? theme.accent : 'none'} />
                 </span>
                 <span style={{ color: active ? theme.accent : theme.textFaint, display: 'flex' }}><ChevronRight size={15} /></span>
               </button>
