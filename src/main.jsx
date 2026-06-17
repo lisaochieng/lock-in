@@ -4,7 +4,7 @@
    claude.ai/design. Keeps persistence, YouTube ambience,
    calendar deep-links and auth.
    =========================================================== */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   LockKeyhole, LayoutGrid, UserCircle, CalendarDays, Timer, ListTodo,
@@ -18,6 +18,8 @@ import AmbientBackground from './AmbientBackground';
 import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget } from './widgets';
 import { SpacesPanel, ProfilePanel, CalendarPanel } from './panels';
 import Landing from './Landing';
+import * as auth from './lib/auth';
+import * as db from './lib/db';
 import './styles.css';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -27,6 +29,9 @@ const starterTasks = [
   { id: crypto.randomUUID(), title: 'finish problem set questions 1-5', done: false },
   { id: crypto.randomUUID(), title: 'make flashcards for key terms', done: true },
 ];
+
+const defaultSettings = { focus: 25, shortBreak: 5, longBreak: 15, dailyGoal: 120, weeklyGoal: 600 };
+const defaultStats = () => ({ totalMinutes: 170, completedSessions: 6, streak: 3, days: { [todayKey()]: 50 } });
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
@@ -38,6 +43,36 @@ const load = (key, fallback) => {
     return fallback;
   }
 };
+
+// Map a Supabase auth user into the shape the UI already expects.
+const mapUser = (u) => {
+  if (!u) return null;
+  const meta = u.user_metadata || {};
+  const provider = u.app_metadata?.provider || (meta.avatar_url ? 'google' : 'email');
+  return {
+    id: u.id,
+    email: u.email,
+    name: meta.name || meta.full_name || (u.email ? u.email.split('@')[0] : 'student'),
+    avatar_url: meta.avatar_url || null,
+    provider,
+  };
+};
+
+// Translate between the UI `settings` object and the DB `goals` row.
+const goalsToSettings = (g) => ({
+  focus: g.focus_duration,
+  shortBreak: g.short_break_duration,
+  longBreak: g.long_break_duration,
+  dailyGoal: g.daily_goal_minutes,
+  weeklyGoal: g.weekly_goal_minutes,
+});
+const settingsToGoals = (s) => ({
+  focus_duration: s.focus,
+  short_break_duration: s.shortBreak,
+  long_break_duration: s.longBreak,
+  daily_goal_minutes: s.dailyGoal,
+  weekly_goal_minutes: s.weeklyGoal,
+});
 
 function usePersistentState(key, fallback) {
   const [value, setValue] = useState(() => load(key, fallback));
@@ -62,16 +97,19 @@ function App() {
   const [spaceQuery, setSpaceQuery] = useState('');
   const [category, setCategory] = useState('all');
 
-  const [user, setUser] = usePersistentState('lockin-user', null);
+  const [user, setUser] = useState(null);
   const [authMode, setAuthMode] = useState('signin');
   const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
 
   const [calendarProvider, setCalendarProvider] = usePersistentState('lockin-calendar-provider', 'google');
   const [calendarSynced, setCalendarSynced] = usePersistentState('lockin-calendar-synced', false);
 
-  const [tasks, setTasks] = usePersistentState('lockin-tasks', starterTasks);
-  const [settings, setSettings] = usePersistentState('lockin-settings', { focus: 25, shortBreak: 5, longBreak: 15, dailyGoal: 120, weeklyGoal: 600 });
-  const [stats, setStats] = usePersistentState('lockin-stats', { totalMinutes: 170, completedSessions: 6, streak: 3, days: { [todayKey()]: 50 } });
+  // Data lives in component state; localStorage is the offline / signed-out
+  // fallback, and Supabase becomes the source of truth once authenticated.
+  const [tasks, setTasksState] = useState(() => load('lockin-tasks', starterTasks));
+  const [settings, setSettings] = useState(() => load('lockin-settings', defaultSettings));
+  const [stats, setStats] = useState(() => load('lockin-stats', defaultStats()));
+  const [favorites, setFavoritesState] = useState(() => load('lockin-favorites', []));
 
   const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', { timer: true, tasks: true, goals: true, progress: true, room: true });
 
@@ -98,6 +136,136 @@ function App() {
 
   const space = spaces.find((item) => item.id === activeSpace) || spaces[0];
   const theme = useMemo(() => themeFor(space.category), [space.category]);
+
+  // ---- refs for stable access inside effects / timers ----
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  const activeSpaceRef = useRef(activeSpace);
+  useEffect(() => { activeSpaceRef.current = activeSpace; }, [activeSpace]);
+  const goalsReadyRef = useRef(false);
+  const taskUpdateTimers = useRef({});
+
+  // ---- session stats from Supabase ----
+  const refreshStats = useCallback(async (uid) => {
+    const { data } = await db.fetchSessionStats(uid);
+    if (data) {
+      setStats((prev) => ({
+        ...prev,
+        totalMinutes: data.totalWeek,
+        streak: data.streak,
+        days: data.byDay,
+      }));
+    }
+  }, []);
+
+  // ---- auth: hydrate current user + keep it in sync ----
+  useEffect(() => {
+    let active = true;
+    auth.getCurrentUser().then(({ user: u }) => { if (active) setUser(mapUser(u)); });
+    const unsub = auth.onAuthStateChange((_event, session) => {
+      setUser(mapUser(session?.user ?? null));
+    });
+    return () => { active = false; if (unsub) unsub(); };
+  }, []);
+
+  // ---- load data on auth change: Supabase when signed in, else localStorage ----
+  useEffect(() => {
+    if (!user) {
+      goalsReadyRef.current = false;
+      setTasksState(load('lockin-tasks', starterTasks));
+      setSettings(load('lockin-settings', defaultSettings));
+      setFavoritesState(load('lockin-favorites', []));
+      setStats(load('lockin-stats', defaultStats()));
+      return undefined;
+    }
+    let active = true;
+    goalsReadyRef.current = false;
+    (async () => {
+      const [taskRes, goalRes, favRes] = await Promise.all([
+        db.fetchTasks(user.id),
+        db.fetchGoals(user.id),
+        db.fetchFavorites(user.id),
+      ]);
+      if (!active) return;
+      setTasksState((taskRes.data || []).map((r) => ({ id: r.id, title: r.text, done: r.completed })));
+      if (goalRes.data) setSettings(goalsToSettings(goalRes.data));
+      else await db.saveGoals(user.id, settingsToGoals(settingsRef.current));
+      goalsReadyRef.current = true;
+      setFavoritesState((favRes.data || []).map((r) => r.space_id));
+      await refreshStats(user.id);
+    })();
+    return () => { active = false; };
+  }, [user?.id, refreshStats]);
+
+  // ---- localStorage fallback writes (only while signed out) ----
+  useEffect(() => { if (!user) localStorage.setItem('lockin-tasks', JSON.stringify(tasks)); }, [tasks, user]);
+  useEffect(() => { if (!user) localStorage.setItem('lockin-settings', JSON.stringify(settings)); }, [settings, user]);
+  useEffect(() => { if (!user) localStorage.setItem('lockin-stats', JSON.stringify(stats)); }, [stats, user]);
+  useEffect(() => { if (!user) localStorage.setItem('lockin-favorites', JSON.stringify(favorites)); }, [favorites, user]);
+
+  // ---- goals / timer settings sync to Supabase (debounced) ----
+  useEffect(() => {
+    if (!user || !goalsReadyRef.current) return undefined;
+    const t = setTimeout(() => { db.saveGoals(user.id, settingsToGoals(settings)); }, 500);
+    return () => clearTimeout(t);
+  }, [settings, user?.id]);
+
+  // ---- tasks: optimistic local state with DB persistence ----
+  const persistTaskChanges = (prev, next) => {
+    const u = userRef.current;
+    if (!u) return; // signed out -> localStorage effect handles it
+    const uid = u.id;
+    const added = next.filter((n) => !prev.some((p) => p.id === n.id));
+    const removed = prev.filter((p) => !next.some((n) => n.id === p.id));
+    const updated = next.filter((n) => {
+      const p = prev.find((x) => x.id === n.id);
+      return p && (p.title !== n.title || p.done !== n.done);
+    });
+    added.forEach(async (t) => {
+      const { data, error } = await db.saveTask(uid, { text: t.title, completed: t.done });
+      if (!error && data) {
+        setTasksState((cur) => cur.map((x) => (x.id === t.id ? { ...x, id: data.id } : x)));
+      }
+    });
+    removed.forEach((t) => {
+      if (taskUpdateTimers.current[t.id]) {
+        clearTimeout(taskUpdateTimers.current[t.id]);
+        delete taskUpdateTimers.current[t.id];
+      }
+      db.deleteTask(uid, t.id);
+    });
+    updated.forEach((t) => {
+      if (taskUpdateTimers.current[t.id]) clearTimeout(taskUpdateTimers.current[t.id]);
+      taskUpdateTimers.current[t.id] = setTimeout(() => {
+        db.updateTask(uid, t.id, { text: t.title, completed: t.done });
+        delete taskUpdateTimers.current[t.id];
+      }, 500);
+    });
+  };
+
+  const setTasks = (updater) => {
+    setTasksState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      queueMicrotask(() => persistTaskChanges(prev, next));
+      return next;
+    });
+  };
+
+  // ---- favorites toggle (heart a space) ----
+  const toggleFavorite = (spaceId) => {
+    setFavoritesState((prev) => {
+      const has = prev.includes(spaceId);
+      const next = has ? prev.filter((id) => id !== spaceId) : [...prev, spaceId];
+      const u = userRef.current;
+      if (u) {
+        if (has) db.removeFavorite(u.id, spaceId);
+        else db.addFavorite(u.id, spaceId);
+      }
+      return next;
+    });
+  };
 
   const completedTasks = tasks.filter((task) => task.done).length;
   const todayMinutes = stats.days[todayKey()] || 0;
@@ -134,20 +302,29 @@ function App() {
     setIsRunning(false);
     if (mode === 'focus') {
       const minutes = settings.focus;
-      setStats((current) => ({
-        ...current,
-        totalMinutes: current.totalMinutes + minutes,
-        completedSessions: current.completedSessions + 1,
-        streak: current.streak + (todayMinutes === 0 ? 1 : 0),
-        days: { ...current.days, [todayKey()]: (current.days[todayKey()] || 0) + minutes },
-      }));
+      const u = userRef.current;
+      if (u) {
+        db.logSession(u.id, {
+          duration_minutes: minutes,
+          space_id: activeSpaceRef.current,
+          session_type: 'focus',
+        }).then(() => refreshStats(u.id));
+      } else {
+        setStats((current) => ({
+          ...current,
+          totalMinutes: current.totalMinutes + minutes,
+          completedSessions: current.completedSessions + 1,
+          streak: current.streak + (todayMinutes === 0 ? 1 : 0),
+          days: { ...current.days, [todayKey()]: (current.days[todayKey()] || 0) + minutes },
+        }));
+      }
       setMode('shortBreak');
       setSecondsLeft(settings.shortBreak * 60);
     } else {
       setMode('focus');
       setSecondsLeft(settings.focus * 60);
     }
-  }, [mode, secondsLeft, settings.focus, settings.shortBreak, todayMinutes, setStats]);
+  }, [mode, secondsLeft, settings.focus, settings.shortBreak, todayMinutes, refreshStats]);
 
   useEffect(() => { completionHandled.current = false; }, [secondsLeft]);
 
@@ -158,13 +335,20 @@ function App() {
     setIsRunning(false);
   };
 
-  const handleAuth = (event) => {
+  const handleAuth = async (event) => {
     event.preventDefault();
     const email = authForm.email.trim().toLowerCase();
-    if (!email) return;
-    setUser({ name: authMode === 'signup' ? authForm.name.trim() || email.split('@')[0] : email.split('@')[0], email, provider: 'email' });
+    const password = authForm.password;
+    if (!email || !password) return;
+    const res = authMode === 'signup'
+      ? await auth.signUpWithEmail(email, password, authForm.name.trim() || email.split('@')[0])
+      : await auth.signInWithEmail(email, password);
+    if (res.error) { console.warn('[auth]', res.error.message); return; }
+    // onAuthStateChange updates `user`; clear the form on success.
+    setAuthForm({ name: '', email: '', password: '' });
   };
-  const signInWithGoogle = () => setUser({ name: 'google student', email: 'student@gmail.com', provider: 'google' });
+  const signInWithGoogle = () => { auth.signInWithGoogle(); };
+  const handleSignOut = async () => { await auth.signOut(); setUser(null); };
 
   const widgetIds = ['timer', 'tasks', 'goals', 'progress', 'room'];
   const allWidgetsOpen = widgetIds.every((id) => widgetsOpen[id]);
@@ -236,10 +420,10 @@ function App() {
             <button className="iconbtn" onClick={() => setPanel(null)} style={{ color: theme.textDim, transform: 'scaleX(-1)' }}><ChevronRight size={18} /></button>
           </div>
           {panel === 'spaces' && (
-            <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={(s) => setActiveSpace(s.id)} query={spaceQuery} setQuery={setSpaceQuery} cat={category} setCat={setCategory} />
+            <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={(s) => setActiveSpace(s.id)} query={spaceQuery} setQuery={setSpaceQuery} cat={category} setCat={setCategory} favorites={favorites} onToggleFavorite={toggleFavorite} />
           )}
           {panel === 'profile' && (
-            <ProfilePanel theme={theme} user={user} authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} onSubmit={handleAuth} onGoogle={signInWithGoogle} onSignOut={() => setUser(null)} />
+            <ProfilePanel theme={theme} user={user} authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} onSubmit={handleAuth} onGoogle={signInWithGoogle} onSignOut={handleSignOut} />
           )}
           {panel === 'calendar' && (
             <CalendarPanel theme={theme} provider={calendarProvider} setProvider={setCalendarProvider} synced={calendarSynced} setSynced={setCalendarSynced} calendarUrl={calendarUrl} />
@@ -305,13 +489,26 @@ function Root() {
   const roomFromUrl = params.get('room');
   const forceLanding = params.has('landing'); // visit /?landing to always see the landing
   const [entered, setEntered] = usePersistentState('lockin-entered', false);
+  const [sessionState, setSessionState] = useState('checking'); // checking | yes | no
 
-  if (!forceLanding && (entered || roomFromUrl)) return <App />;
+  useEffect(() => {
+    let active = true;
+    auth.getCurrentUser()
+      .then(({ user }) => { if (active) setSessionState(user ? 'yes' : 'no'); })
+      .catch(() => { if (active) setSessionState('no'); });
+    return () => { active = false; };
+  }, []);
 
   const enter = () => {
     setEntered(true);
     if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
   };
+
+  if (!forceLanding && (entered || roomFromUrl)) return <App />;
+  // A returning, signed-in user skips the hero entirely.
+  if (!forceLanding && sessionState === 'yes') return <App />;
+  // Avoid flashing the hero while we confirm whether a session exists.
+  if (!forceLanding && sessionState === 'checking') return null;
   return <Landing onEnter={enter} />;
 }
 
