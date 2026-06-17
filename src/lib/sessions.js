@@ -53,17 +53,24 @@ const streakFrom = (minutesByDay) => {
 };
 
 /**
- * Insert a completed focus session.
+ * Insert a completed session. Accepts either:
+ *   logSession(userId, durationMinutes, spaceId)
+ *   logSession({ userId, durationMinutes, spaceId, sessionType })
  * Returns { data, error } (the inserted row on success).
  */
-export async function logSession(userId, durationMinutes, spaceId) {
+export async function logSession(userIdOrOpts, durationMinutes, spaceId) {
+  const opts =
+    userIdOrOpts && typeof userIdOrOpts === 'object'
+      ? userIdOrOpts
+      : { userId: userIdOrOpts, durationMinutes, spaceId };
+
   const { data, error } = await supabase
     .from('sessions')
     .insert({
-      user_id: userId,
-      duration_minutes: durationMinutes,
-      space_id: spaceId ?? null,
-      session_type: 'focus',
+      user_id: opts.userId,
+      duration_minutes: opts.durationMinutes,
+      space_id: opts.spaceId ?? null,
+      session_type: opts.sessionType ?? 'focus',
     })
     .select()
     .single();
