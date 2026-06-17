@@ -90,7 +90,9 @@ function RailBtn({ theme, icon, label, active, onClick }) {
 }
 
 function App() {
-  const roomFromUrl = new URLSearchParams(window.location.search).get('room');
+  const params = new URLSearchParams(window.location.search);
+  const roomFromUrl = params.get('room');
+  const forceLanding = params.has('landing'); // visit /?landing to preview the hero
 
   const [activeSpace, setActiveSpace] = usePersistentState('lockin-space', 'rainy-library');
   const [panel, setPanel] = useState('spaces'); // spaces | profile | calendar | null
@@ -98,8 +100,9 @@ function App() {
   const [category, setCategory] = useState('all');
 
   const [user, setUser] = useState(null);
-  const [authMode, setAuthMode] = useState('signin');
-  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
+  const [authChecked, setAuthChecked] = useState(false);
+  const [entered, setEntered] = usePersistentState('lockin-entered', false); // guest mode
+  const [showHero, setShowHero] = useState(false); // force the hero (e.g. from profile)
 
   const [calendarProvider, setCalendarProvider] = usePersistentState('lockin-calendar-provider', 'google');
   const [calendarSynced, setCalendarSynced] = usePersistentState('lockin-calendar-synced', false);
@@ -163,9 +166,20 @@ function App() {
   // ---- auth: hydrate current user + keep it in sync ----
   useEffect(() => {
     let active = true;
-    auth.getCurrentUser().then(({ user: u }) => { if (active) setUser(mapUser(u)); });
-    const unsub = auth.onAuthStateChange((_event, session) => {
+    auth.getCurrentUser()
+      .then(({ user: u, error }) => {
+        if (error) console.error('[auth] getCurrentUser error:', error);
+        if (active) { setUser(mapUser(u)); setAuthChecked(true); }
+      })
+      .catch((e) => {
+        console.error('[auth] getCurrentUser threw:', e);
+        if (active) setAuthChecked(true);
+      });
+    const unsub = auth.onAuthStateChange((event, session) => {
+      console.log('[auth] onAuthStateChange fired:', event, '— session user:', session?.user ?? null);
       setUser(mapUser(session?.user ?? null));
+      setAuthChecked(true);
+      setShowHero(false);
     });
     return () => { active = false; if (unsub) unsub(); };
   }, []);
@@ -335,20 +349,57 @@ function App() {
     setIsRunning(false);
   };
 
-  const handleAuth = async (event) => {
-    event.preventDefault();
-    const email = authForm.email.trim().toLowerCase();
-    const password = authForm.password;
-    if (!email || !password) return;
-    const res = authMode === 'signup'
-      ? await auth.signUpWithEmail(email, password, authForm.name.trim() || email.split('@')[0])
-      : await auth.signInWithEmail(email, password);
-    if (res.error) { console.warn('[auth]', res.error.message); return; }
-    // onAuthStateChange updates `user`; clear the form on success.
-    setAuthForm({ name: '', email: '', password: '' });
+  // Auth handlers return a result object so the hero can show messages.
+  const handleSignIn = async (email, password) => {
+    try {
+      const { user: u, session, error } = await auth.signInWithEmail(email, password);
+      if (error) { console.error('[auth] signInWithEmail error:', error); return { error }; }
+      console.log('[auth] signInWithEmail session:', session, '— user:', u ?? session?.user ?? null);
+      return { user: u, session };
+    } catch (e) {
+      console.error('[auth] signInWithEmail threw:', e);
+      return { error: e };
+    }
   };
-  const signInWithGoogle = () => { auth.signInWithGoogle(); };
-  const handleSignOut = async () => { await auth.signOut(); setUser(null); };
+
+  const handleSignUp = async (email, password, name) => {
+    try {
+      const { user: u, session, error } = await auth.signUpWithEmail(email, password, name);
+      if (error) { console.error('[auth] signUpWithEmail error:', error); return { error }; }
+      console.log('[auth] signUpWithEmail result — session:', session, '— user:', u);
+      // No session means Supabase requires email confirmation before sign-in.
+      if (!session) return { needsConfirmation: true, user: u };
+      return { user: u, session };
+    } catch (e) {
+      console.error('[auth] signUpWithEmail threw:', e);
+      return { error: e };
+    }
+  };
+
+  const handleGoogle = async () => {
+    try {
+      const { error } = await auth.signInWithGoogle();
+      if (error) console.error('[auth] signInWithGoogle error:', error);
+    } catch (e) {
+      console.error('[auth] signInWithGoogle threw:', e);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await auth.signOut();
+      if (error) console.error('[auth] signOut error:', error);
+    } catch (e) {
+      console.error('[auth] signOut threw:', e);
+    }
+    setUser(null);
+  };
+
+  const enterGuest = () => {
+    setEntered(true);
+    setShowHero(false);
+    if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
+  };
 
   const widgetIds = ['timer', 'tasks', 'goals', 'progress', 'room'];
   const allWidgetsOpen = widgetIds.every((id) => widgetsOpen[id]);
@@ -372,6 +423,22 @@ function App() {
     room: { x: Math.min(800, W - 320), y: 470 },
   };
   const wProps = (k) => ({ theme, onClose: () => setWidgetsOpen((o) => ({ ...o, [k]: false })), init: widgetInit[k], z: zMap[k] || 40, onFocusZ: () => raise(k) });
+
+  // ---- routing: signed-in (or guest / room link) -> app, otherwise the hero ----
+  const guestMode = entered && !showHero;
+  const wantApp = !forceLanding && (user || guestMode || roomFromUrl);
+  if (!wantApp) {
+    // Wait for the first auth check so a signed-in user never flashes the hero.
+    if (!authChecked && !showHero) return null;
+    return (
+      <Landing
+        onEnter={enterGuest}
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+        onGoogle={handleGoogle}
+      />
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, color: theme.text, fontFamily: "'Hanken Grotesk', sans-serif", overflow: 'hidden' }}>
@@ -423,7 +490,7 @@ function App() {
             <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={(s) => setActiveSpace(s.id)} query={spaceQuery} setQuery={setSpaceQuery} cat={category} setCat={setCategory} favorites={favorites} onToggleFavorite={toggleFavorite} />
           )}
           {panel === 'profile' && (
-            <ProfilePanel theme={theme} user={user} authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} onSubmit={handleAuth} onGoogle={signInWithGoogle} onSignOut={handleSignOut} />
+            <ProfilePanel theme={theme} user={user} onSignOut={handleSignOut} onShowHero={() => setShowHero(true)} />
           )}
           {panel === 'calendar' && (
             <CalendarPanel theme={theme} provider={calendarProvider} setProvider={setCalendarProvider} synced={calendarSynced} setSynced={setCalendarSynced} calendarUrl={calendarUrl} />
@@ -484,32 +551,4 @@ function App() {
   );
 }
 
-function Root() {
-  const params = new URLSearchParams(window.location.search);
-  const roomFromUrl = params.get('room');
-  const forceLanding = params.has('landing'); // visit /?landing to always see the landing
-  const [entered, setEntered] = usePersistentState('lockin-entered', false);
-  const [sessionState, setSessionState] = useState('checking'); // checking | yes | no
-
-  useEffect(() => {
-    let active = true;
-    auth.getCurrentUser()
-      .then(({ user }) => { if (active) setSessionState(user ? 'yes' : 'no'); })
-      .catch(() => { if (active) setSessionState('no'); });
-    return () => { active = false; };
-  }, []);
-
-  const enter = () => {
-    setEntered(true);
-    if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
-  };
-
-  if (!forceLanding && (entered || roomFromUrl)) return <App />;
-  // A returning, signed-in user skips the hero entirely.
-  if (!forceLanding && sessionState === 'yes') return <App />;
-  // Avoid flashing the hero while we confirm whether a session exists.
-  if (!forceLanding && sessionState === 'checking') return null;
-  return <Landing onEnter={enter} />;
-}
-
-createRoot(document.getElementById('root')).render(<Root />);
+createRoot(document.getElementById('root')).render(<App />);
