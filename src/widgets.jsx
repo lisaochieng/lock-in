@@ -74,11 +74,14 @@ function formatTime(seconds) {
 
 /* ------- Timer ------- */
 export function TimerWidget(props) {
-  const { theme, mode, selectMode, secondsLeft, settings, setSettings, setSecondsLeft, isRunning, setIsRunning } = props;
+  const { theme, mode, selectMode, secondsLeft, settings, setSettings, setSecondsLeft, isRunning, setIsRunning, sessionCount = 0, sessionToast = false } = props;
   const total = (mode === 'focus' ? settings.focus : mode === 'shortBreak' ? settings.shortBreak : settings.longBreak) * 60;
   const prog = total ? 1 - secondsLeft / total : 0;
   const R = 52;
   const C = 2 * Math.PI * R;
+  // start | resume (paused mid-round) | pause (running)
+  const startLabel = isRunning ? 'pause' : (secondsLeft < total ? 'resume' : 'start');
+  const sessionInCycle = (sessionCount % 4) + 1; // 1..4
 
   const setDuration = (key, value) => {
     const minutes = Math.max(1, Number(value) || 1);
@@ -108,17 +111,30 @@ export function TimerWidget(props) {
 
   return (
     <Widget {...props} title="timer" icon={<Timer size={15} />} width={300}>
+      {sessionToast && (
+        <div
+          aria-live="polite"
+          style={{ position: 'absolute', top: -42, left: 0, right: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none', animation: 'widgetIn .26s ease' }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999, fontSize: 12, color: theme.accentInk, background: theme.accent, boxShadow: '0 12px 30px -12px rgba(0,0,0,0.5)' }}>
+            <Check size={13} strokeWidth={2.6} /> focus session complete
+          </span>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>{tabs.map(tab)}</div>
       <div style={{ position: 'relative', width: 168, height: 168, margin: '2px auto 14px' }}>
         <svg width={168} height={168} style={{ transform: 'rotate(-90deg)' }}>
           <circle cx={84} cy={84} r={R} fill="none" stroke={theme.trackBg} strokeWidth={7} />
-          <circle cx={84} cy={84} r={R} fill="none" stroke={theme.accent} strokeWidth={7} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - prog)} style={{ transition: 'stroke-dashoffset .9s linear' }} />
+          <circle cx={84} cy={84} r={R} fill="none" stroke={theme.accent} strokeWidth={7} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * prog} style={{ transition: 'stroke-dashoffset .9s linear' }} />
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, fontWeight: 500, fontFamily: SERIF, fontVariantNumeric: 'tabular-nums' }}>{formatTime(secondsLeft)}</div>
       </div>
+      <div style={{ textAlign: 'center', fontSize: 11, color: theme.textFaint, marginBottom: 13, letterSpacing: '.03em' }}>
+        session {sessionInCycle} of 4 until long break
+      </div>
       <div style={{ display: 'flex', gap: 9, marginBottom: 15 }}>
         <button onClick={() => setIsRunning((r) => !r)} className="primarybtn" style={{ flex: 1, background: theme.accent, color: theme.accentInk }}>
-          {isRunning ? <Pause size={16} /> : <Play size={16} />}{isRunning ? 'pause' : 'start'}
+          {isRunning ? <Pause size={16} /> : <Play size={16} />}{startLabel}
         </button>
         <button onClick={() => selectMode(mode)} className="ghostbtn" style={{ color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}>
           <RotateCcw size={16} /> reset
