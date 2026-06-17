@@ -20,6 +20,7 @@ import { SpacesPanel, ProfilePanel, CalendarPanel } from './panels';
 import Landing from './Landing';
 import * as auth from './lib/auth';
 import * as db from './lib/db';
+import * as sessions from './lib/sessions';
 import './styles.css';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -117,6 +118,9 @@ function App() {
   const [mode, setMode] = useState('focus');
   const [secondsLeft, setSecondsLeft] = useState(settings.focus * 60);
   const [isRunning, setIsRunning] = useState(false);
+  const [sessionCount, setSessionCount] = useState(0); // focus rounds completed today
+  const [timerToast, setTimerToast] = useState(false); // "focus session complete" notice
+  const toastTimerRef = useRef(null);
 
   const [roomName, setRoomName] = usePersistentState('lockin-room', roomFromUrl || 'exam-week');
   const [activeVideo, setActiveVideo] = useState(spaces.find((s) => s.id === activeSpace)?.video);
@@ -145,6 +149,8 @@ function App() {
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const activeSpaceRef = useRef(activeSpace);
   useEffect(() => { activeSpaceRef.current = activeSpace; }, [activeSpace]);
+  const sessionCountRef = useRef(sessionCount);
+  useEffect(() => { sessionCountRef.current = sessionCount; }, [sessionCount]);
   const goalsReadyRef = useRef(false);
   const taskUpdateTimers = useRef({});
 
@@ -190,6 +196,7 @@ function App() {
       setSettings(load('lockin-settings', defaultSettings));
       setFavoritesState(load('lockin-favorites', []));
       setStats(load('lockin-stats', defaultStats()));
+      setSessionCount(0);
       return undefined;
     }
     let active = true;
@@ -207,6 +214,11 @@ function App() {
       goalsReadyRef.current = true;
       setFavoritesState((favRes.data || []).map((r) => r.space_id));
       await refreshStats(user.id);
+
+      // Today's completed focus rounds (only focus sessions are logged).
+      const today = new Date();
+      const byMonth = await sessions.fetchSessionsByMonth(user.id, today.getFullYear(), today.getMonth() + 1);
+      if (active) setSessionCount((byMonth[today.getDate()] || []).length);
     })();
     return () => { active = false; };
   }, [user?.id, refreshStats]);
@@ -318,10 +330,11 @@ function App() {
       const minutes = settings.focus;
       const u = userRef.current;
       if (u) {
-        db.logSession(u.id, {
-          duration_minutes: minutes,
-          space_id: activeSpaceRef.current,
-          session_type: 'focus',
+        sessions.logSession({
+          userId: u.id,
+          durationMinutes: minutes,
+          spaceId: activeSpaceRef.current,
+          sessionType: 'focus',
         }).then(() => refreshStats(u.id));
       } else {
         setStats((current) => ({
@@ -332,13 +345,23 @@ function App() {
           days: { ...current.days, [todayKey()]: (current.days[todayKey()] || 0) + minutes },
         }));
       }
-      setMode('shortBreak');
-      setSecondsLeft(settings.shortBreak * 60);
+
+      // Completion toast for ~3s.
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      setTimerToast(true);
+      toastTimerRef.current = window.setTimeout(() => setTimerToast(false), 3000);
+
+      // Every 4th focus round suggests a long break, otherwise a short one.
+      const nextCount = sessionCountRef.current + 1;
+      setSessionCount(nextCount);
+      const longBreakDue = nextCount % 4 === 0;
+      setMode(longBreakDue ? 'longBreak' : 'shortBreak');
+      setSecondsLeft((longBreakDue ? settings.longBreak : settings.shortBreak) * 60);
     } else {
       setMode('focus');
       setSecondsLeft(settings.focus * 60);
     }
-  }, [mode, secondsLeft, settings.focus, settings.shortBreak, todayMinutes, refreshStats]);
+  }, [mode, secondsLeft, settings.focus, settings.shortBreak, settings.longBreak, todayMinutes, refreshStats]);
 
   useEffect(() => { completionHandled.current = false; }, [secondsLeft]);
 
@@ -541,7 +564,7 @@ function App() {
 
       {/* widgets */}
       {widgetsOpen.timer && (
-        <TimerWidget {...wProps('timer')} mode={mode} selectMode={selectMode} secondsLeft={secondsLeft} settings={settings} setSettings={setSettings} setSecondsLeft={setSecondsLeft} isRunning={isRunning} setIsRunning={setIsRunning} />
+        <TimerWidget {...wProps('timer')} mode={mode} selectMode={selectMode} secondsLeft={secondsLeft} settings={settings} setSettings={setSettings} setSecondsLeft={setSecondsLeft} isRunning={isRunning} setIsRunning={setIsRunning} sessionCount={sessionCount} sessionToast={timerToast} />
       )}
       {widgetsOpen.tasks && <TasksWidget {...wProps('tasks')} tasks={tasks} setTasks={setTasks} />}
       {widgetsOpen.goals && <GoalsWidget {...wProps('goals')} settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />}
