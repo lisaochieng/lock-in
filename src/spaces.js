@@ -1,74 +1,125 @@
 /* ===========================================================
    Study spaces — each backed by a calm YouTube ambience.
-   The scene thumbnail doubles as the cinematic backdrop.
+   Thumbnails are hand-picked Unsplash photos (clean, no logos).
+   `startAt` skips past each video's intro / title cards.
    =========================================================== */
 
-const thumb = (id) => `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+const unsplash = (id) => `https://images.unsplash.com/photo-${id}?w=400&q=80`;
 
 export const spaces = [
-  // rain
-  { id: 'rainy-library', name: 'rainy village', category: 'rain', mood: 'deep reading', video: '6ntUefWpN40' },
-  { id: 'rain-on-window', name: 'rain on window', category: 'rain', mood: 'slow notes', video: 'JzlYA5iYkEE' },
-  { id: 'quiet-rainstorm', name: 'quiet study rain', category: 'rain', mood: 'quiet focus', video: 'LmFXjuuIDOE' },
+  // rain — cool slate greys
+  { id: 'rainy-library', name: 'rainy village', category: 'rain', mood: 'deep reading', video: '6ntUefWpN40', startAt: 30, image: unsplash('1493314894560-5c412a56c17c') },
+  { id: 'rain-on-window', name: 'rain on window', category: 'rain', mood: 'slow notes', video: 'JzlYA5iYkEE', startAt: 20, image: unsplash('1428592953211-077101b2021b') },
+  { id: 'quiet-rainstorm', name: 'quiet study rain', category: 'rain', mood: 'quiet focus', video: 'LmFXjuuIDOE', startAt: 15, image: unsplash('1519692933481-e162a57d6721') },
 
-  // forest
-  { id: 'forest-cabin', name: 'woodland birdsong', category: 'forest', mood: 'calm recall', video: 'XxP8kxUn5bc' },
-  { id: 'forest-stream', name: 'forest stream', category: 'forest', mood: 'gentle review', video: 'JsyMl9uz4rQ' },
-  { id: 'ancient-woods', name: 'ancient woods', category: 'forest', mood: 'light tasks', video: 'Qm846KdZN_c' },
+  // forest — sage greens
+  { id: 'forest-cabin', name: 'woodland birdsong', category: 'forest', mood: 'calm recall', video: 'XxP8kxUn5bc', startAt: 20, image: unsplash('1441974231531-c6227db76b6e') },
+  { id: 'forest-stream', name: 'forest stream', category: 'forest', mood: 'gentle review', video: 'JsyMl9uz4rQ', startAt: 30, image: unsplash('1448375240586-882707db888b') },
+  { id: 'ancient-woods', name: 'ancient woods', category: 'forest', mood: 'light tasks', video: 'Qm846KdZN_c', startAt: 30, image: unsplash('1500530855697-b586d89ba3ee') },
 
-  // beach
-  { id: 'ocean-window', name: 'ocean shore', category: 'beach', mood: 'slow planning', video: 'dxNg3q1n2HI' },
-  { id: 'rolling-waves', name: 'rolling waves', category: 'beach', mood: 'easy reading', video: 'Q9a86gbpbjU' },
-  { id: 'greek-cove', name: 'greek cove', category: 'beach', mood: 'bright focus', video: '_iPgznUNWbU' },
+  // beach — soft teals
+  { id: 'ocean-window', name: 'ocean shore', category: 'beach', mood: 'slow planning', video: 'dxNg3q1n2HI', startAt: 30, image: unsplash('1507525428034-b723cf961d3e') },
+  { id: 'rolling-waves', name: 'rolling waves', category: 'beach', mood: 'easy reading', video: 'Q9a86gbpbjU', startAt: 30, image: unsplash('1505228395891-9a51e7e86bf6') },
+  { id: 'greek-cove', name: 'greek cove', category: 'beach', mood: 'bright focus', video: '_iPgznUNWbU', startAt: 30, image: unsplash('1473116763249-2faaef81ccda') },
 
-  // cafe
-  { id: 'cozy-cafe', name: 'cozy cafe', category: 'cafe', mood: 'essay flow', video: 'MYPVQccHhAQ' },
-  { id: 'winter-cafe', name: 'winter cafe', category: 'cafe', mood: 'warm grind', video: 'jh4C7w-dvho' },
-  { id: 'new-york-cafe', name: 'new york cafe', category: 'cafe', mood: 'light writing', video: 'PRAGLqfNK1o' },
+  // cafe — warm amber
+  { id: 'cozy-cafe', name: 'cozy cafe', category: 'cafe', mood: 'essay flow', video: 'MYPVQccHhAQ', startAt: 20, image: unsplash('1554118811-1e0d58224f24') },
+  { id: 'winter-cafe', name: 'winter cafe', category: 'cafe', mood: 'warm grind', video: 'jh4C7w-dvho', startAt: 20, image: unsplash('1501339847302-ac426a4a7cbb') },
+  { id: 'new-york-cafe', name: 'new york cafe', category: 'cafe', mood: 'light writing', video: 'PRAGLqfNK1o', startAt: 20, image: unsplash('1445116572660-236099ec97a0') },
 
-  // library
-  { id: 'sunlit-archive', name: 'study library', category: 'library', mood: 'research mode', video: 'eXGwSlxeG0k' },
-  { id: 'gothic-manor', name: 'gothic manor', category: 'library', mood: 'deep study', video: '6orVoBwfGSA' },
-  { id: 'rainy-library-jazz', name: 'rainy library', category: 'library', mood: 'exam prep', video: 'FbrJJxntUws' },
+  // library — parchment gold
+  { id: 'sunlit-archive', name: 'study library', category: 'library', mood: 'research mode', video: 'eXGwSlxeG0k', startAt: 20, image: unsplash('1507842217343-583bb7270b66') },
+  { id: 'gothic-manor', name: 'gothic manor', category: 'library', mood: 'deep study', video: 'O9ZmAGVWCNY', startAt: 30, image: unsplash('1521587760476-6c12a4b040da') },
+  { id: 'rainy-library-jazz', name: 'rainy library', category: 'library', mood: 'exam prep', video: 'FbrJJxntUws', startAt: 30, image: unsplash('1481627834876-b7833e8f5570') },
 
-  // fireplace
-  { id: 'fireside-cabin', name: 'fireside cabin', category: 'fireplace', mood: 'cozy recall', video: 'IJf4QMPEbOI' },
-  { id: 'crackling-hearth', name: 'crackling hearth', category: 'fireplace', mood: 'warm reading', video: 'cuPPcx9KRVw' },
-  { id: 'ember-glow', name: 'ember glow', category: 'fireplace', mood: 'slow focus', video: 'GDEWcq1us48' },
+  // fireplace — warm ember
+  { id: 'fireside-cabin', name: 'fireside cabin', category: 'fireplace', mood: 'cozy recall', video: 'IJf4QMPEbOI', startAt: 20, image: unsplash('1543599538-a6c4f6cc5c05') },
+  { id: 'crackling-hearth', name: 'crackling hearth', category: 'fireplace', mood: 'warm reading', video: 'cuPPcx9KRVw', startAt: 20, image: unsplash('1476611317561-60117649dd94') },
+  { id: 'ember-glow', name: 'ember glow', category: 'fireplace', mood: 'slow focus', video: 'GDEWcq1us48', startAt: 20, image: unsplash('1513694203232-719a280e022f') },
 
-  // night city
-  { id: 'night-focus', name: 'neon city rain', category: 'night city', mood: 'quiet grind', video: 'DKOFLh6fNas' },
-  { id: 'neon-walk', name: 'neon walk', category: 'night city', mood: 'midnight flow', video: 'AJOepyLmMBU' },
-  { id: 'city-drive', name: 'city drive', category: 'night city', mood: 'late session', video: '0GZUoICMpuU' },
+  // night city — deep purples
+  { id: 'night-focus', name: 'neon city rain', category: 'night city', mood: 'quiet grind', video: 'DKOFLh6fNas', startAt: 30, image: unsplash('1480714378408-67cf0d13bc1b') },
+  { id: 'neon-walk', name: 'neon walk', category: 'night city', mood: 'midnight flow', video: 'AJOepyLmMBU', startAt: 45, image: unsplash('1493976040374-85c8e12f0c0e') },
+  { id: 'city-drive', name: 'city drive', category: 'night city', mood: 'late session', video: '0GZUoICMpuU', startAt: 20, image: unsplash('1449824913935-59a10b8d2000') },
 
-  // snow
-  { id: 'snowy-evening', name: 'snowy forest', category: 'snow', mood: 'exam prep', video: 'JFajK-Nn49w' },
-  { id: 'snow-lake', name: 'snow on the lake', category: 'snow', mood: 'calm recall', video: 'jh_KFTYJnDo' },
-  { id: 'forest-blizzard', name: 'forest blizzard', category: 'snow', mood: 'slow notes', video: 'MEnbuMfbM9c' },
+  // snow — icy blues
+  { id: 'snowy-evening', name: 'snowy forest', category: 'snow', mood: 'exam prep', video: 'JFajK-Nn49w', startAt: 20, image: unsplash('1483664852095-d6cc6870702d') },
+  { id: 'snow-lake', name: 'snow on the lake', category: 'snow', mood: 'calm recall', video: 'jh_KFTYJnDo', startAt: 20, image: unsplash('1517299321609-52687d1bc55a') },
+  { id: 'forest-blizzard', name: 'forest blizzard', category: 'snow', mood: 'slow notes', video: 'MEnbuMfbM9c', startAt: 20, image: unsplash('1491002052546-bf38f186af56') },
 
-  // japanese garden
-  { id: 'zen-garden', name: 'zen garden', category: 'japanese garden', mood: 'mindful study', video: 'nKjeWnUn7sc' },
-  { id: 'bamboo-fountain', name: 'bamboo fountain', category: 'japanese garden', mood: 'gentle review', video: '4WQ1lsikdQE' },
-  { id: 'koi-garden', name: 'koi garden', category: 'japanese garden', mood: 'calm recall', video: 'aJaZc4E8Y4U' },
+  // japanese garden — sakura + green
+  { id: 'zen-garden', name: 'zen garden', category: 'japanese garden', mood: 'mindful study', video: 'nKjeWnUn7sc', startAt: 30, image: unsplash('1503640538573-148065ba4904') },
+  { id: 'bamboo-fountain', name: 'bamboo fountain', category: 'japanese garden', mood: 'gentle review', video: '4WQ1lsikdQE', startAt: 20, image: unsplash('1492571350019-22de08371fd3') },
+  { id: 'koi-garden', name: 'koi garden', category: 'japanese garden', mood: 'calm recall', video: 'aJaZc4E8Y4U', startAt: 20, image: unsplash('1480796927426-f609979314bd') },
 
-  // underwater
-  { id: 'coral-reef', name: 'coral reef', category: 'underwater', mood: 'slow planning', video: 'eHxbMa2RVTQ' },
-  { id: 'reef-aquarium', name: 'reef aquarium', category: 'underwater', mood: 'easy reading', video: 'NE2-H5Br-C8' },
-  { id: 'deep-reef', name: 'deep reef', category: 'underwater', mood: 'calm focus', video: 'hZ8YuF82QAQ' },
+  // underwater — aqua
+  { id: 'coral-reef', name: 'coral reef', category: 'underwater', mood: 'slow planning', video: 'eHxbMa2RVTQ', startAt: 20, image: unsplash('1518837695005-2083093ee35b') },
+  { id: 'reef-aquarium', name: 'reef aquarium', category: 'underwater', mood: 'easy reading', video: 'NE2-H5Br-C8', startAt: 20, image: unsplash('1530053969600-caed2596d242') },
+  { id: 'deep-reef', name: 'deep reef', category: 'underwater', mood: 'calm focus', video: 'hZ8YuF82QAQ', startAt: 30, image: unsplash('1559827260-dc66d52bef19') },
 
-  // rooftop
-  { id: 'rooftop-sunset', name: 'rooftop sunset', category: 'rooftop', mood: 'soft focus', video: 'YuYSDNcwVgg' },
-  { id: 'open-window-night', name: 'open window night', category: 'rooftop', mood: 'late session', video: 'Vg1mpD1BICI' },
+  // rooftop — dusky rose
+  { id: 'rooftop-sunset', name: 'rooftop sunset', category: 'rooftop', mood: 'soft focus', video: 'YuYSDNcwVgg', startAt: 30, image: unsplash('1519501025264-65ba15a82390') },
+  { id: 'open-window-night', name: 'open window night', category: 'rooftop', mood: 'late session', video: 'Vg1mpD1BICI', startAt: 30, image: unsplash('1470770841072-f978cf4d019e') },
 
-  // thunderstorm
-  { id: 'rolling-thunder', name: 'rolling thunder', category: 'thunderstorm', mood: 'deep focus', video: 'aLcTO3tnnKo' },
-  { id: 'night-storm', name: 'night storm', category: 'thunderstorm', mood: 'quiet grind', video: 'o2VbPkxrBa4' },
-  { id: 'cabin-storm', name: 'cabin storm', category: 'thunderstorm', mood: 'cozy recall', video: 'rturNpd-D6s' },
+  // thunderstorm — stormy slate
+  { id: 'rolling-thunder', name: 'rolling thunder', category: 'thunderstorm', mood: 'deep focus', video: 'aLcTO3tnnKo', startAt: 30, image: unsplash('1605727216801-e27ce1d0cc28') },
+  { id: 'night-storm', name: 'night storm', category: 'thunderstorm', mood: 'quiet grind', video: 'o2VbPkxrBa4', startAt: 60, image: unsplash('1500674425229-f692875b0ab7') },
+  { id: 'cabin-storm', name: 'cabin storm', category: 'thunderstorm', mood: 'cozy recall', video: 'rturNpd-D6s', startAt: 30, image: unsplash('1429552077091-836152271555') },
 
-  // waterfall
-  { id: 'forest-waterfall', name: 'forest waterfall', category: 'waterfall', mood: 'fresh focus', video: 'wGXRyO0zhqE' },
-  { id: 'cascading-falls', name: 'cascading falls', category: 'waterfall', mood: 'easy flow', video: 'eG3RL02umkk' },
-].map((space) => ({ ...space, image: thumb(space.video) }));
+  // waterfall — fresh teal-green
+  { id: 'forest-waterfall', name: 'forest waterfall', category: 'waterfall', mood: 'fresh focus', video: 'wGXRyO0zhqE', startAt: 20, image: unsplash('1432405972618-c60b0225b8f9') },
+  { id: 'cascading-falls', name: 'cascading falls', category: 'waterfall', mood: 'easy flow', video: 'eG3RL02umkk', startAt: 20, image: unsplash('1467890947394-8171244e5410') },
+
+  // desert — warm sand
+  { id: 'desert-dunes', name: 'desert dunes', category: 'desert', mood: 'deep stillness', video: '8l6gMrlp-Ss', startAt: 30, image: unsplash('1473580044384-7ba9967e16a0') },
+  { id: 'sahara-wind', name: 'sahara wind', category: 'desert', mood: 'slow focus', video: 'myKHHlX2NAY', startAt: 30, image: unsplash('1509316785289-025f5b846b35') },
+
+  // mountains — cool stone
+  { id: 'alpine-peak', name: 'alpine peak', category: 'mountains', mood: 'clear mind', video: 'iT67jHkJVn8', startAt: 30, image: unsplash('1454496522488-7a8e488e8606') },
+  { id: 'mountain-lake', name: 'mountain lake', category: 'mountains', mood: 'calm recall', video: '-nPprpooRnI', startAt: 30, image: unsplash('1506905925346-21bda4d32df4') },
+
+  // train — cozy travel
+  { id: 'night-train', name: 'night train', category: 'train', mood: 'slow notes', video: 'QrldKgvsCB4', startAt: 30, image: unsplash('1517524008697-84bbe3c3fd98') },
+  { id: 'vintage-train', name: 'vintage train', category: 'train', mood: 'gentle review', video: 'iI8R8rrDRkk', startAt: 30, image: unsplash('1474487548417-781cb71495f3') },
+
+  // airplane window — sky blue
+  { id: 'window-seat', name: 'window seat', category: 'airplane window', mood: 'quiet focus', video: 'co7KgV2edvI', startAt: 30, image: unsplash('1436491865332-7a61a109cc05') },
+  { id: 'night-flight', name: 'night flight', category: 'airplane window', mood: 'late session', video: 'LhxrqkShWs0', startAt: 45, image: unsplash('1474302770737-173ee21bab63') },
+
+  // rice fields — green terraces
+  { id: 'rice-terraces', name: 'rice terraces', category: 'rice fields', mood: 'morning pages', video: 'LzQbASHAwn4', startAt: 5, image: unsplash('1502086223501-7ea6ecd79368') },
+
+  // cherry blossom — soft pink
+  { id: 'cherry-blossom', name: 'cherry blossom', category: 'cherry blossom', mood: 'fresh start', video: '1zYkuUmLOL4', startAt: 30, image: unsplash('1522383225653-ed111181a951') },
+  { id: 'rainy-sakura', name: 'rainy sakura', category: 'cherry blossom', mood: 'soft focus', video: 'zS0rSzRQyWE', startAt: 60, image: unsplash('1490806843957-31f4c9a91c65') },
+
+  // arctic — aurora ice
+  { id: 'aurora-night', name: 'aurora night', category: 'arctic', mood: 'dream focus', video: 'ncSljkJ7Y3M', startAt: 20, image: unsplash('1483347756197-71ef80e95f73') },
+  { id: 'arctic-camp', name: 'arctic campfire', category: 'arctic', mood: 'cozy recall', video: 'WKpNukcZKD4', startAt: 30, image: unsplash('1531366936337-7c912a4589a7') },
+
+  // savanna — golden plains
+  { id: 'savanna-dawn', name: 'savanna dawn', category: 'savanna', mood: 'gentle review', video: 'mS11b7dSuxI', startAt: 30, image: unsplash('1516426122078-c23e76319801') },
+  { id: 'savanna-waterhole', name: 'savanna waterhole', category: 'savanna', mood: 'light tasks', video: 'iGesdx8lDGY', startAt: 20, image: unsplash('1534177616072-ef7dc120449d') },
+
+  // lavender field — soft purple
+  { id: 'lavender-field', name: 'lavender field', category: 'lavender field', mood: 'easy reading', video: 'z8_ir_Dbegk', startAt: 30, image: unsplash('1499002238440-d264edd596ec') },
+
+  // morning fog — misty light
+  { id: 'misty-lake', name: 'misty lake', category: 'morning fog', mood: 'slow planning', video: 'PG2A0WhqGPQ', startAt: 20, image: unsplash('1470071459604-3b5ec3a7fe05') },
+  { id: 'foggy-forest', name: 'foggy forest', category: 'morning fog', mood: 'quiet focus', video: 'pFjVC9dBDCA', startAt: 20, image: unsplash('1487621167305-5d248087c724') },
+
+  // canal — venetian water
+  { id: 'venice-canal', name: 'venice canal', category: 'canal', mood: 'easy reading', video: 'riZWEoGKyuU', startAt: 60, image: unsplash('1523906834658-6e24ef2386f9') },
+  { id: 'canal-morning', name: 'canal morning', category: 'canal', mood: 'light writing', video: 'VW_eRA4H1Yc', startAt: 30, image: unsplash('1514890547357-a9ee288728e0') },
+
+  // treehouse — jungle green
+  { id: 'jungle-treehouse', name: 'jungle treehouse', category: 'treehouse', mood: 'calm focus', video: 'oWYoqDLLhy4', startAt: 30, image: unsplash('1469854523086-cc02fe5d8800') },
+  { id: 'forest-treehouse', name: 'forest treehouse', category: 'treehouse', mood: 'cozy recall', video: 'i2XHIGfNP4w', startAt: 30, image: unsplash('1488462237308-ecaa28b729d7') },
+
+  // cozy bedroom — warm amber
+  { id: 'cozy-bedroom', name: 'cozy bedroom', category: 'cozy bedroom', mood: 'slow notes', video: '6z2NhKfpWFw', startAt: 30, image: unsplash('1586023492125-27b2c045efd7') },
+  { id: 'rainy-bedroom', name: 'rainy bedroom', category: 'cozy bedroom', mood: 'late session', video: '0Y4lwRWDDGY', startAt: 30, image: unsplash('1522771739844-6a9f6d5f14af') },
+];
 
 export const categories = ['all', ...new Set(spaces.map((item) => item.category))];
 
