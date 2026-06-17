@@ -59,17 +59,15 @@ const mapUser = (u) => {
 };
 
 // Translate between the UI `settings` object and the DB `goals` row.
-const goalsToSettings = (g) => ({
-  focus: g.focus_duration,
-  shortBreak: g.short_break_duration,
-  longBreak: g.long_break_duration,
+// The DB only stores the daily/weekly minute goals; the timer durations
+// (focus / short break / long break) are device preferences kept in
+// localStorage, so we merge the DB goals onto the existing settings.
+const applyGoals = (settings, g) => ({
+  ...settings,
   dailyGoal: g.daily_goal_minutes,
   weeklyGoal: g.weekly_goal_minutes,
 });
 const settingsToGoals = (s) => ({
-  focus_duration: s.focus,
-  short_break_duration: s.shortBreak,
-  long_break_duration: s.longBreak,
   daily_goal_minutes: s.dailyGoal,
   weekly_goal_minutes: s.weeklyGoal,
 });
@@ -203,8 +201,8 @@ function App() {
         db.fetchFavorites(user.id),
       ]);
       if (!active) return;
-      setTasksState((taskRes.data || []).map((r) => ({ id: r.id, title: r.text, done: r.completed })));
-      if (goalRes.data) setSettings(goalsToSettings(goalRes.data));
+      setTasksState((taskRes.data || []).map((r) => ({ id: r.id, title: r.title, done: r.completed })));
+      if (goalRes.data) setSettings((prev) => applyGoals(prev, goalRes.data));
       else await db.saveGoals(user.id, settingsToGoals(settingsRef.current));
       goalsReadyRef.current = true;
       setFavoritesState((favRes.data || []).map((r) => r.space_id));
@@ -215,9 +213,11 @@ function App() {
 
   // ---- localStorage fallback writes (only while signed out) ----
   useEffect(() => { if (!user) localStorage.setItem('lockin-tasks', JSON.stringify(tasks)); }, [tasks, user]);
-  useEffect(() => { if (!user) localStorage.setItem('lockin-settings', JSON.stringify(settings)); }, [settings, user]);
   useEffect(() => { if (!user) localStorage.setItem('lockin-stats', JSON.stringify(stats)); }, [stats, user]);
   useEffect(() => { if (!user) localStorage.setItem('lockin-favorites', JSON.stringify(favorites)); }, [favorites, user]);
+  // Timer durations (focus / short / long break) aren't stored in the DB, so
+  // persist settings to localStorage for everyone to keep them across reloads.
+  useEffect(() => { localStorage.setItem('lockin-settings', JSON.stringify(settings)); }, [settings]);
 
   // ---- goals / timer settings sync to Supabase (debounced) ----
   useEffect(() => {
@@ -238,7 +238,7 @@ function App() {
       return p && (p.title !== n.title || p.done !== n.done);
     });
     added.forEach(async (t) => {
-      const { data, error } = await db.saveTask(uid, { text: t.title, completed: t.done });
+      const { data, error } = await db.saveTask(uid, { title: t.title, completed: t.done });
       if (!error && data) {
         setTasksState((cur) => cur.map((x) => (x.id === t.id ? { ...x, id: data.id } : x)));
       }
@@ -253,7 +253,7 @@ function App() {
     updated.forEach((t) => {
       if (taskUpdateTimers.current[t.id]) clearTimeout(taskUpdateTimers.current[t.id]);
       taskUpdateTimers.current[t.id] = setTimeout(() => {
-        db.updateTask(uid, t.id, { text: t.title, completed: t.done });
+        db.updateTask(uid, t.id, { title: t.title, completed: t.done });
         delete taskUpdateTimers.current[t.id];
       }, 500);
     });

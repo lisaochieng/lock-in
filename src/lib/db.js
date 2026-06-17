@@ -30,16 +30,15 @@ export async function fetchTasks(userId) {
 
 /**
  * Insert a new task.
- * `task` => { text, completed? }
+ * `task` => { title, completed? }
  */
 export async function saveTask(userId, task) {
   const { data, error } = await supabase
     .from('tasks')
     .insert({
       user_id: userId,
-      text: task.text,
+      title: task.title,
       completed: task.completed ?? false,
-      completed_at: task.completed ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -48,17 +47,12 @@ export async function saveTask(userId, task) {
 
 /**
  * Update an existing task.
- * `updates` => any of { text, completed }
- * When `completed` flips, `completed_at` is set/cleared accordingly.
+ * `updates` => any of { title, completed }
  */
 export async function updateTask(userId, taskId, updates) {
-  const patch = { ...updates };
-  if (Object.prototype.hasOwnProperty.call(updates, 'completed')) {
-    patch.completed_at = updates.completed ? new Date().toISOString() : null;
-  }
   const { data, error } = await supabase
     .from('tasks')
-    .update(patch)
+    .update(updates)
     .eq('id', taskId)
     .eq('user_id', userId)
     .select()
@@ -92,15 +86,15 @@ export async function fetchGoals(userId) {
 
 /**
  * Create or update the user's goals row (upsert on user_id).
- * `goals` => any of {
- *   daily_goal_minutes, weekly_goal_minutes,
- *   focus_duration, short_break_duration, long_break_duration
- * }
+ * `goals` => any of { daily_goal_minutes, weekly_goal_minutes }
  */
 export async function saveGoals(userId, goals) {
   const { data, error } = await supabase
     .from('goals')
-    .upsert({ user_id: userId, ...goals }, { onConflict: 'user_id' })
+    .upsert(
+      { user_id: userId, ...goals, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    )
     .select()
     .single();
   return { data, error };
@@ -113,19 +107,20 @@ export async function saveGoals(userId, goals) {
 /**
  * Log a completed session.
  * `session` => {
- *   duration_minutes, space_id?, session_type?, completed_at?
+ *   duration_minutes, space_id?, session_type?, created_at?
  * }
  */
 export async function logSession(userId, session) {
+  const row = {
+    user_id: userId,
+    duration_minutes: session.duration_minutes,
+    space_id: session.space_id ?? null,
+    session_type: session.session_type ?? 'focus',
+  };
+  if (session.created_at) row.created_at = session.created_at;
   const { data, error } = await supabase
     .from('sessions')
-    .insert({
-      user_id: userId,
-      duration_minutes: session.duration_minutes,
-      space_id: session.space_id ?? null,
-      session_type: session.session_type ?? 'focus',
-      completed_at: session.completed_at ?? new Date().toISOString(),
-    })
+    .insert(row)
     .select()
     .single();
   return { data, error };
@@ -137,7 +132,7 @@ export async function fetchSessions(userId, { limit = 100 } = {}) {
     .from('sessions')
     .select('*')
     .eq('user_id', userId)
-    .order('completed_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
   return { data, error };
 }
@@ -168,11 +163,11 @@ export async function fetchSessionStats(userId) {
 
   const { data, error } = await supabase
     .from('sessions')
-    .select('duration_minutes, completed_at, session_type')
+    .select('duration_minutes, created_at, session_type')
     .eq('user_id', userId)
     .eq('session_type', 'focus')
-    .gte('completed_at', since.toISOString())
-    .order('completed_at', { ascending: false });
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: false });
 
   if (error) return { data: null, error };
 
@@ -181,7 +176,7 @@ export async function fetchSessionStats(userId) {
   // Minutes per day key.
   const minutesByDay = {};
   for (const row of rows) {
-    const key = dayKey(row.completed_at);
+    const key = dayKey(row.created_at);
     minutesByDay[key] = (minutesByDay[key] || 0) + (row.duration_minutes || 0);
   }
 
@@ -200,12 +195,12 @@ export async function fetchSessionStats(userId) {
   }
 
   for (const row of rows) {
-    const ts = new Date(row.completed_at).getTime();
+    const ts = new Date(row.created_at).getTime();
     const minutes = row.duration_minutes || 0;
     if (ts >= todayStart) totalToday += minutes;
     if (ts >= weekStart) {
       totalWeek += minutes;
-      const key = dayKey(row.completed_at);
+      const key = dayKey(row.created_at);
       if (key in byDay) byDay[key] += minutes;
     }
   }
@@ -267,24 +262,24 @@ export async function removeFavorite(userId, spaceId) {
    ----------------------------------------------------------- */
 
 /**
- * Create a room hosted by the user, and add the host as the
+ * Create a room owned by the user, and add the owner as the
  * first member.
  */
 export async function createRoom(userId, name) {
   const { data: room, error } = await supabase
     .from('rooms')
-    .insert({ name, host_user_id: userId, is_active: true })
+    .insert({ name, created_by: userId, is_active: true })
     .select()
     .single();
 
   if (error) return { data: null, error };
 
-  // Best-effort: add the host as a member. If this fails we still
+  // Best-effort: add the owner as a member. If this fails we still
   // return the room, but surface the membership error.
   const { error: memberError } = await supabase
     .from('room_members')
     .upsert(
-      { room_id: room.id, user_id: userId },
+      { room_id: room.id, user_id: userId, last_seen_at: new Date().toISOString() },
       { onConflict: 'room_id,user_id' }
     );
 
@@ -296,7 +291,7 @@ export async function joinRoom(userId, roomId) {
   const { data, error } = await supabase
     .from('room_members')
     .upsert(
-      { room_id: roomId, user_id: userId },
+      { room_id: roomId, user_id: userId, last_seen_at: new Date().toISOString() },
       { onConflict: 'room_id,user_id' }
     )
     .select()
@@ -327,7 +322,7 @@ export async function fetchUserRooms(userId) {
 export async function fetchRoomMembers(roomId) {
   const { data, error } = await supabase
     .from('room_members')
-    .select('user_id, joined_at, users (id, name, avatar_url)')
+    .select('user_id, joined_at, last_seen_at')
     .eq('room_id', roomId);
   return { data, error };
 }
