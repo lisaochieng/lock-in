@@ -7,9 +7,9 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  LockKeyhole, LayoutGrid, UserCircle, CalendarDays, Timer, ListTodo,
+  LayoutGrid, UserCircle, CalendarDays, Timer, ListTodo,
   Target, BarChart3, Users, MoreHorizontal, Play, Pause, Link as LinkIcon,
-  ChevronRight, Volume2,
+  ChevronRight, Volume2, EyeOff, PanelTop,
 } from 'lucide-react';
 import { themeFor, quotesFor } from './theme';
 import { spaces, categories } from './spaces';
@@ -573,10 +573,15 @@ function App() {
     if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
   };
 
-  const widgetIds = ['timer', 'tasks', 'goals', 'progress', 'room', 'sound'];
-  const allWidgetsOpen = widgetIds.every((id) => widgetsOpen[id]);
+  const navWidgetIds = ['timer', 'tasks', 'goals', 'progress', 'sound'];
   const toggleWidget = (k) => { setWidgetsOpen((o) => ({ ...o, [k]: !o[k] })); if (!widgetsOpen[k]) raise(k); };
-  const toggleAllWidgets = () => { const next = !allWidgetsOpen; setWidgetsOpen(Object.fromEntries(widgetIds.map((id) => [id, next]))); };
+  const showAllWidgets = () => {
+    setWidgetsOpen((o) => ({ ...o, ...Object.fromEntries(navWidgetIds.map((id) => [id, true])) }));
+    navWidgetIds.forEach((id) => raise(id));
+  };
+  const hideAllWidgets = () => {
+    setWidgetsOpen((o) => ({ ...o, ...Object.fromEntries(navWidgetIds.map((id) => [id, false])) }));
+  };
 
   const openPanel = (k) => setPanel((p) => (p === k ? null : k));
   const panelTitle = { spaces: 'spaces', profile: 'profile', calendar: 'calendar' }[panel];
@@ -644,23 +649,21 @@ function App() {
 
       {/* left rail */}
       <div className="rail" style={{ background: theme.railBg, borderRight: `1px solid ${theme.panelBorder}` }}>
-        <div className="raillogo" style={{ color: theme.accent }}><LockKeyhole size={22} /></div>
+        <div className="raillogo" style={{ color: theme.text }}>lock in</div>
         <div className="railgroup">
           <RailBtn theme={theme} icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
           <RailBtn theme={theme} icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />
-          <RailBtn theme={theme} icon={<CalendarDays size={20} />} label="calendar" active={panel === 'calendar'} onClick={() => openPanel('calendar')} />
-        </div>
-        <div className="railgroup">
-          <RailBtn theme={theme} icon={<Volume2 size={20} />} label="sound" active={widgetsOpen.sound} onClick={() => toggleWidget('sound')} />
           <RailBtn theme={theme} icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
           <RailBtn theme={theme} icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
           <RailBtn theme={theme} icon={<Target size={20} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
           <RailBtn theme={theme} icon={<BarChart3 size={20} />} label="progress" active={widgetsOpen.progress} onClick={() => toggleWidget('progress')} />
-          <RailBtn theme={theme} icon={<Users size={20} />} label="room" active={widgetsOpen.room} onClick={() => toggleWidget('room')} />
+          <RailBtn theme={theme} icon={<Volume2 size={20} />} label="sound" active={widgetsOpen.sound} onClick={() => toggleWidget('sound')} />
         </div>
         <div style={{ marginTop: 'auto', width: '100%' }}>
-          <div className="railfooter-div" />
-          <RailBtn theme={theme} icon={<MoreHorizontal size={20} />} label={allWidgetsOpen ? 'hide all' : 'show all'} active={false} onClick={toggleAllWidgets} />
+          <hr className="raildivider" />
+          <RailBtn theme={theme} icon={<PanelTop size={20} />} label="show all" active={false} onClick={showAllWidgets} />
+          <RailBtn theme={theme} icon={<EyeOff size={20} />} label="hide all" active={false} onClick={hideAllWidgets} />
+          <RailBtn theme={theme} icon={<MoreHorizontal size={20} />} label="more" active={false} onClick={() => {}} />
         </div>
       </div>
 
@@ -701,8 +704,11 @@ function App() {
         <button className="glassbtn" onClick={() => setVideoStarted((p) => !p)} title="play / pause ambience" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
           {videoStarted ? <Pause size={18} /> : <Play size={18} />}
         </button>
-        <button className="glassbtn" onClick={() => setPanel('calendar')} title="calendar" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
+        <button className="glassbtn" onClick={() => openPanel('calendar')} title="calendar" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, boxShadow: panel === 'calendar' ? `inset 0 0 0 1px ${theme.panelBorder}` : 'none' }}>
           <CalendarDays size={18} />
+        </button>
+        <button className="glassbtn" onClick={() => toggleWidget('room')} title="room" style={{ color: widgetsOpen.room ? theme.accent : theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, boxShadow: widgetsOpen.room ? `inset 0 0 0 1px ${theme.panelBorder}` : 'none' }}>
+          <Users size={18} />
         </button>
         <button className="glassbtn" title="copy room link" onClick={() => roomLink && navigator.clipboard?.writeText(roomLink)} style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, opacity: roomLink ? 1 : 0.45 }} disabled={!roomLink}>
           <LinkIcon size={18} />
