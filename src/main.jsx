@@ -43,7 +43,50 @@ const saveVolume = (value) => {
   localStorage.setItem(VOLUME_KEY, String(Math.min(100, Math.max(0, value))));
 };
 
-const defaultWidgetsOpen = { timer: true, tasks: true, goals: true, progress: true, room: true, sound: false };
+const defaultWidgetsOpen = { timer: true, tasks: true, goals: false, progress: false, room: false, sound: false };
+
+const WIDGET_LAYOUT_KEY = 'lockin_widget_layout';
+const WIDGET_IDS = ['timer', 'tasks', 'goals', 'progress', 'room', 'sound'];
+
+const clampWidgetPos = (x, y) => {
+  const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  const H = typeof window !== 'undefined' ? window.innerHeight : 800;
+  return {
+    x: Math.min(Math.max(80, x), W - 320),
+    y: Math.min(Math.max(100, y), H - 200),
+  };
+};
+
+const defaultWidgetLayout = () => {
+  const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  return {
+    timer: clampWidgetPos(80, 120),
+    tasks: clampWidgetPos(W - 380, 120),
+    goals: clampWidgetPos(80, 420),
+    progress: clampWidgetPos(W - 380, 380),
+    room: clampWidgetPos(Math.floor(W / 2) - 160, 420),
+    sound: clampWidgetPos(80, 680),
+  };
+};
+
+const loadWidgetLayout = () => {
+  try {
+    const raw = localStorage.getItem(WIDGET_LAYOUT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const defaults = defaultWidgetLayout();
+      const layout = {};
+      for (const id of WIDGET_IDS) {
+        const p = parsed[id];
+        layout[id] = p && Number.isFinite(p.x) && Number.isFinite(p.y)
+          ? clampWidgetPos(p.x, p.y)
+          : defaults[id];
+      }
+      return layout;
+    }
+  } catch { /* use defaults */ }
+  return defaultWidgetLayout();
+};
 
 const SpacesPanel = lazy(() => import('./panels').then((m) => ({ default: m.SpacesPanel })));
 const ProfilePanel = lazy(() => import('./panels').then((m) => ({ default: m.ProfilePanel })));
@@ -137,6 +180,7 @@ function App() {
   const [favorites, setFavoritesState] = useState(() => load('lockin-favorites', []));
 
   const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', defaultWidgetsOpen);
+  const [widgetLayout, setWidgetLayout] = useState(() => loadWidgetLayout());
 
   const [mode, setMode] = useState('focus');
   const [secondsLeft, setSecondsLeft] = useState(settings.focus * 60);
@@ -583,6 +627,29 @@ function App() {
     setWidgetsOpen((o) => ({ ...o, ...Object.fromEntries(navWidgetIds.map((id) => [id, false])) }));
   };
 
+  const setWidgetPos = useCallback((id, pos) => {
+    const clamped = clampWidgetPos(pos.x, pos.y);
+    setWidgetLayout((prev) => {
+      const next = { ...prev, [id]: clamped };
+      localStorage.setItem(WIDGET_LAYOUT_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      setWidgetLayout((prev) => {
+        const next = Object.fromEntries(
+          WIDGET_IDS.map((id) => [id, clampWidgetPos(prev[id]?.x ?? 80, prev[id]?.y ?? 120)]),
+        );
+        localStorage.setItem(WIDGET_LAYOUT_KEY, JSON.stringify(next));
+        return next;
+      });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const openPanel = (k) => setPanel((p) => (p === k ? null : k));
   const panelTitle = { spaces: 'spaces', profile: 'profile', calendar: 'calendar' }[panel];
 
@@ -601,16 +668,14 @@ function App() {
     ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart, muted: false })
     : '';
 
-  const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
-  const widgetInit = {
-    timer: { x: Math.min(470, W - 340), y: 132 },
-    tasks: { x: Math.max(440, W - 360), y: 110 },
-    goals: { x: Math.min(800, W - 320), y: 132 },
-    progress: { x: Math.max(440, W - 360), y: 392 },
-    room: { x: Math.min(800, W - 320), y: 470 },
-    sound: { x: Math.min(470, W - 300), y: 470 },
-  };
-  const wProps = (k) => ({ theme, onClose: () => setWidgetsOpen((o) => ({ ...o, [k]: false })), init: widgetInit[k], z: zMap[k] || 40, onFocusZ: () => raise(k) });
+  const wProps = (k) => ({
+    theme,
+    onClose: () => setWidgetsOpen((o) => ({ ...o, [k]: false })),
+    pos: widgetLayout[k],
+    onPosChange: (p) => setWidgetPos(k, p),
+    z: zMap[k] || 40,
+    onFocusZ: () => raise(k),
+  });
 
   // ---- routing: signed-in (or guest / room link) -> app, otherwise the hero ----
   const guestMode = entered && !showHero;

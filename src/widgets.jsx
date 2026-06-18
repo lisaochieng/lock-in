@@ -42,8 +42,21 @@ function panelStyle(theme) {
 }
 
 /* draggable shell */
-function Widget({ theme, title, icon, onClose, init, width = 300, z, onFocusZ, children }) {
-  const [pos, setPos] = useState(init || { x: 120, y: 140 });
+function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, width = 300, z, onFocusZ, children }) {
+  const clampPos = (x, y) => ({
+    x: Math.max(80, Math.min(window.innerWidth - 320, x)),
+    y: Math.max(100, Math.min(window.innerHeight - 200, y)),
+  });
+
+  const fallback = clampPos((init || { x: 120, y: 140 }).x, (init || { x: 120, y: 140 }).y);
+  const [localPos, setLocalPos] = useState(fallback);
+  const pos = posProp ?? localPos;
+
+  const commitPos = (p) => {
+    const c = clampPos(p.x, p.y);
+    if (onPosChange) onPosChange(c);
+    else setLocalPos(c);
+  };
 
   const startDrag = (e) => {
     if (onFocusZ) onFocusZ();
@@ -52,9 +65,7 @@ function Widget({ theme, title, icon, onClose, init, width = 300, z, onFocusZ, c
     const ox = pos.x;
     const oy = pos.y;
     const move = (ev) => {
-      const nx = Math.max(8, Math.min(window.innerWidth - width - 8, ox + ev.clientX - sx));
-      const ny = Math.max(8, Math.min(window.innerHeight - 80, oy + ev.clientY - sy));
-      setPos({ x: nx, y: ny });
+      commitPos({ x: ox + ev.clientX - sx, y: oy + ev.clientY - sy });
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
