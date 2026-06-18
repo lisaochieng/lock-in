@@ -40,10 +40,20 @@ const AUTH = {
   border: 'rgba(85,98,79,0.22)',
 };
 
-function AuthOverlay({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle, prominent = false }) {
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null); // { type: 'error' | 'info', text }
+  const [message, setMessage] = useState(null);
+  const nameRef = useRef(null);
+  const emailRef = useRef(null);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (mode === 'signup') nameRef.current?.focus();
+      else emailRef.current?.focus();
+    }, prominent ? 0 : 80);
+    return () => window.clearTimeout(t);
+  }, [mode, prominent]);
 
   const field = {
     width: '100%', background: AUTH.field, border: `1px solid ${AUTH.border}`, color: AUTH.ink,
@@ -54,93 +64,207 @@ function AuthOverlay({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle }) {
     e.preventDefault();
     const email = form.email.trim().toLowerCase();
     const password = form.password;
-    if (!email || !password) { setMessage({ type: 'error', text: 'enter your email and password' }); return; }
+    if (!email || !password) {
+      setMessage({ type: 'error', text: 'enter your email and password' });
+      return;
+    }
+    if (mode === 'signup' && password !== form.confirmPassword) {
+      setMessage({ type: 'error', text: 'passwords do not match' });
+      return;
+    }
     setBusy(true);
     setMessage(null);
     const res = mode === 'signup'
       ? await onSignUp?.(email, password, form.name.trim() || email.split('@')[0])
       : await onSignIn?.(email, password);
     setBusy(false);
-    if (res?.error) { setMessage({ type: 'error', text: res.error.message || 'something went wrong' }); return; }
-    if (res?.needsConfirmation) { setMessage({ type: 'info', text: 'check your email to confirm your account' }); return; }
-    // success: the app's onAuthStateChange takes over and routes to the app.
+    if (res?.error) {
+      setMessage({ type: 'error', text: res.error.message || 'something went wrong' });
+      return;
+    }
+    if (res?.needsConfirmation) {
+      setMessage({ type: 'info', text: 'check your email to confirm your account' });
+      return;
+    }
+    // success: onAuthStateChange routes to the app.
   };
+
+  const card = (
+    <div
+      className={prominent ? 'auth-card auth-card--prominent' : ''}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: 'min(420px, 94vw)',
+        background: AUTH.card,
+        color: AUTH.ink,
+        borderRadius: 22,
+        padding: 28,
+        boxShadow: '0 30px 80px -24px rgba(20,26,18,0.55)',
+        position: 'relative',
+      }}
+    >
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="close"
+          style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: AUTH.faint, cursor: 'pointer', display: 'flex', padding: 4 }}
+        >
+          <X size={18} />
+        </button>
+      )}
+
+      <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, marginBottom: 4 }}>
+        {mode === 'signup' ? 'create your account' : 'welcome back'}
+      </div>
+      <div style={{ fontSize: 13, color: AUTH.dim, marginBottom: 18 }}>
+        {mode === 'signup' ? 'save your tasks, goals and streaks across devices.' : 'sign in to pick up where you left off.'}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {[['signin', 'sign in'], ['signup', 'sign up']].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => { setMode(key); setMessage(null); }}
+            style={{
+              flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              color: mode === key ? AUTH.accentInk : AUTH.ink,
+              background: mode === key ? AUTH.accent : 'transparent',
+              border: `1px solid ${mode === key ? 'transparent' : AUTH.border}`,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onGoogle?.()}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '11px 0', borderRadius: 10, fontSize: 13.5, fontFamily: 'inherit', cursor: 'pointer',
+          color: AUTH.ink, background: AUTH.field, border: `1px solid ${AUTH.border}`,
+        }}
+      >
+        <Sparkles size={16} /> continue with Google
+      </button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: AUTH.faint, fontSize: 12, margin: '14px 0' }}>
+        <span style={{ flex: 1, height: 1, background: AUTH.border }} /> or <span style={{ flex: 1, height: 1, background: AUTH.border }} />
+      </div>
+
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {mode === 'signup' && (
+          <input
+            ref={nameRef}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="name"
+            aria-label="name"
+            style={{ ...field, paddingLeft: 12 }}
+          />
+        )}
+        <label style={{ position: 'relative', display: 'block' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><Mail size={15} /></span>
+          <input
+            ref={emailRef}
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            type="email"
+            placeholder="email"
+            aria-label="email"
+            style={field}
+          />
+        </label>
+        <label style={{ position: 'relative', display: 'block' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><LockKeyhole size={15} /></span>
+          <input
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            type="password"
+            placeholder="password"
+            aria-label="password"
+            style={field}
+          />
+        </label>
+        {mode === 'signup' && (
+          <label style={{ position: 'relative', display: 'block' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><LockKeyhole size={15} /></span>
+            <input
+              value={form.confirmPassword}
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+              type="password"
+              placeholder="confirm password"
+              aria-label="confirm password"
+              style={field}
+            />
+          </label>
+        )}
+        <button
+          type="submit"
+          disabled={busy}
+          style={{
+            width: '100%', padding: '12px 0', borderRadius: 10, fontSize: 14, fontWeight: 500,
+            fontFamily: 'inherit', cursor: busy ? 'default' : 'pointer', color: AUTH.accentInk,
+            background: AUTH.accent, border: 'none', opacity: busy ? 0.7 : 1,
+          }}
+        >
+          {busy ? 'one moment…' : (mode === 'signup' ? 'create account' : 'sign in')}
+        </button>
+      </form>
+
+      {message && (
+        <div style={{ marginTop: 14, fontSize: 12.5, lineHeight: 1.5, color: message.type === 'error' ? '#9b4a3f' : AUTH.accent }}>
+          {message.text}
+        </div>
+      )}
+    </div>
+  );
+
+  if (prominent) return card;
 
   return (
     <div
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(40,46,38,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20, background: 'rgba(40,46,38,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+      }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: 'min(420px, 94vw)', background: AUTH.card, color: AUTH.ink, borderRadius: 22, padding: 28, boxShadow: '0 30px 80px -24px rgba(20,26,18,0.55)', position: 'relative' }}
-      >
-        <button
-          type="button" onClick={onClose} aria-label="close"
-          style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: AUTH.faint, cursor: 'pointer', display: 'flex', padding: 4 }}
-        ><X size={18} /></button>
-
-        <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, marginBottom: 4 }}>
-          {mode === 'signup' ? 'create your account' : 'welcome back'}
-        </div>
-        <div style={{ fontSize: 13, color: AUTH.dim, marginBottom: 18 }}>
-          {mode === 'signup' ? 'save your tasks, goals and streaks across devices.' : 'sign in to pick up where you left off.'}
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {[['signin', 'sign in'], ['signup', 'create account']].map(([key, label]) => (
-            <button
-              key={key} type="button" onClick={() => { setMode(key); setMessage(null); }}
-              style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', color: mode === key ? AUTH.accentInk : AUTH.ink, background: mode === key ? AUTH.accent : 'transparent', border: `1px solid ${mode === key ? 'transparent' : AUTH.border}` }}
-            >{label}</button>
-          ))}
-        </div>
-
-        <button
-          type="button" onClick={() => onGoogle?.()}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 0', borderRadius: 10, fontSize: 13.5, fontFamily: 'inherit', cursor: 'pointer', color: AUTH.ink, background: AUTH.field, border: `1px solid ${AUTH.border}` }}
-        ><Sparkles size={16} /> continue with Google</button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: AUTH.faint, fontSize: 12, margin: '14px 0' }}>
-          <span style={{ flex: 1, height: 1, background: AUTH.border }} /> or <span style={{ flex: 1, height: 1, background: AUTH.border }} />
-        </div>
-
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {mode === 'signup' && (
-            <input
-              value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="name" aria-label="name" style={{ ...field, paddingLeft: 12 }}
-            />
-          )}
-          <label style={{ position: 'relative', display: 'block' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><Mail size={15} /></span>
-            <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" placeholder="email" aria-label="email" style={field} />
-          </label>
-          <label style={{ position: 'relative', display: 'block' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><LockKeyhole size={15} /></span>
-            <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" placeholder="password" aria-label="password" style={field} />
-          </label>
-          <button
-            type="submit" disabled={busy}
-            style={{ width: '100%', padding: '12px 0', borderRadius: 10, fontSize: 14, fontWeight: 500, fontFamily: 'inherit', cursor: busy ? 'default' : 'pointer', color: AUTH.accentInk, background: AUTH.accent, border: 'none', opacity: busy ? 0.7 : 1 }}
-          >{busy ? 'one moment…' : (mode === 'signup' ? 'create account' : 'sign in')}</button>
-        </form>
-
-        {message && (
-          <div style={{ marginTop: 14, fontSize: 12.5, lineHeight: 1.5, color: message.type === 'error' ? '#9b4a3f' : AUTH.accent }}>
-            {message.text}
-          </div>
-        )}
-      </div>
+      {card}
     </div>
   );
 }
 
-export default function Landing({ onEnter, onSignIn, onSignUp, onGoogle }) {
+export default function Landing({
+  showAuth = null,
+  onAuthChange,
+  onAuthClose,
+  onEnter,
+  onSignIn,
+  onSignUp,
+  onGoogle,
+}) {
   const rootRef = useRef(null);
-  const [authMode, setAuthMode] = useState(null); // null | 'signin' | 'signup'
+  const [overlayAuth, setOverlayAuth] = useState(null);
+
+  const openAuth = (mode) => {
+    if (onAuthChange) onAuthChange(mode);
+    else setOverlayAuth(mode);
+  };
+
+  const closeAuth = () => {
+    if (onAuthChange) onAuthChange(null);
+    else setOverlayAuth(null);
+    onAuthClose?.();
+  };
+
+  const activeAuth = showAuth || overlayAuth;
 
   useEffect(() => {
+    if (!showAuth) return undefined;
     const els = rootRef.current?.querySelectorAll('.reveal') || [];
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
@@ -155,12 +279,35 @@ export default function Landing({ onEnter, onSignIn, onSignUp, onGoogle }) {
       io.observe(el);
     });
     return () => io.disconnect();
-  }, []);
+  }, [showAuth]);
 
   const enter = (e) => {
     if (e) e.preventDefault();
     onEnter();
   };
+
+  if (showAuth) {
+    return (
+      <div className="landing landing-auth-focus" ref={rootRef}>
+        <div className="flow" aria-hidden="true">
+          <div className="blob b1" /><div className="blob b2" /><div className="blob b3" />
+        </div>
+        <div className="grain landing-grain" aria-hidden="true" />
+        <div className="landing-auth-focus__inner">
+          <div className="wordmark landing-auth-wordmark">lock <em>in</em></div>
+          <AuthCard
+            prominent
+            mode={showAuth}
+            setMode={(m) => onAuthChange?.(m)}
+            onClose={closeAuth}
+            onSignIn={onSignIn}
+            onSignUp={onSignUp}
+            onGoogle={onGoogle}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="landing" ref={rootRef}>
@@ -179,8 +326,8 @@ export default function Landing({ onEnter, onSignIn, onSignUp, onGoogle }) {
           </div>
           <div className="wordmark">lock <em>in</em></div>
           <div className="nav-right">
-            <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('signin'); }}>sign in</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('signup'); }} className="pill">create account <ArrowRight size={14} /></a>
+            <a href="#" onClick={(e) => { e.preventDefault(); openAuth('signin'); }}>sign in</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); openAuth('signup'); }} className="pill">create account <ArrowRight size={14} /></a>
           </div>
         </nav>
 
@@ -248,11 +395,11 @@ export default function Landing({ onEnter, onSignIn, onSignUp, onGoogle }) {
         </footer>
       </div>
 
-      {authMode && (
-        <AuthOverlay
-          mode={authMode}
-          setMode={setAuthMode}
-          onClose={() => setAuthMode(null)}
+      {overlayAuth && (
+        <AuthCard
+          mode={overlayAuth}
+          setMode={setOverlayAuth}
+          onClose={closeAuth}
           onSignIn={onSignIn}
           onSignUp={onSignUp}
           onGoogle={onGoogle}

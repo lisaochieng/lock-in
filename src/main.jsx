@@ -25,7 +25,16 @@ import * as sessions from './lib/sessions';
 import { joinRoom, getRoom, leaveRoom, roomInviteLink, isValidRoomId } from './lib/rooms';
 import './styles.css';
 
-const SERIF = "'Cormorant Garamond', Georgia, serif";
+const parseHeroAuth = () => {
+  const auth = new URLSearchParams(window.location.search).get('auth');
+  return auth === 'signin' || auth === 'signup' ? auth : null;
+};
+
+const clearHeroAuthUrl = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('auth');
+  window.history.replaceState({}, '', url.pathname + url.search);
+};
 const PENDING_ROOM_KEY = 'lockin-pending-room';
 const CURRENT_ROOM_KEY = 'lockin-current-room';
 const SUPABASE_WRITE_DEBOUNCE_MS = 600;
@@ -181,7 +190,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [entered, setEntered] = usePersistentState('lockin-entered', false); // guest mode
-  const [showHero, setShowHero] = useState(false); // force the hero (e.g. from profile)
+  const [showHero, setShowHero] = useState(() => Boolean(parseHeroAuth()));
+  const [heroAuth, setHeroAuth] = useState(parseHeroAuth); // 'signin' | 'signup' | null
 
   const [calendarProvider, setCalendarProvider] = usePersistentState('lockin-calendar-provider', 'google');
   const [calendarSynced, setCalendarSynced] = usePersistentState('lockin-calendar-synced', false);
@@ -293,6 +303,8 @@ function App() {
       setUser(hydrated);
       setAuthChecked(true);
       setShowHero(false);
+      setHeroAuth(null);
+      clearHeroAuthUrl();
     });
     return () => { active = false; if (unsub) unsub(); };
   }, []);
@@ -347,6 +359,7 @@ function App() {
       if (inviteRoomId) {
         sessionStorage.setItem(PENDING_ROOM_KEY, inviteRoomId);
         setShowHero(true);
+        setHeroAuth('signin');
       }
       return undefined;
     }
@@ -446,7 +459,21 @@ function App() {
   }, []);
 
   const selectSpace = useCallback((s) => setActiveSpace(s.id), [setActiveSpace]);
-  const handleShowHero = useCallback(() => setShowHero(true), []);
+  const navigateToHero = useCallback((auth = null) => {
+    const mode = auth === 'signin' || auth === 'signup' ? auth : null;
+    setShowHero(true);
+    setHeroAuth(mode);
+    const url = new URL(window.location.href);
+    if (mode) url.searchParams.set('auth', mode);
+    else url.searchParams.delete('auth');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, []);
+
+  const closeHero = useCallback(() => {
+    setShowHero(false);
+    setHeroAuth(null);
+    clearHeroAuthUrl();
+  }, []);
 
   const handleIframeLoad = useCallback(() => {
     const apply = () => {
@@ -640,6 +667,8 @@ function App() {
   const enterGuest = () => {
     setEntered(true);
     setShowHero(false);
+    setHeroAuth(null);
+    clearHeroAuthUrl();
     if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
   };
 
@@ -718,14 +747,22 @@ function App() {
     onDragEnd: () => setDraggingWidget((w) => (w === k ? null : w)),
   });
 
-  // ---- routing: signed-in (or guest / room link) -> app, otherwise the hero ----
+  // ---- routing: signed-in users always get the app; guests see hero when requested ----
   const guestMode = entered && !showHero;
-  const wantApp = !forceLanding && (user || guestMode || roomFromUrl);
+  const wantApp = Boolean(user) || (!forceLanding && (guestMode || roomFromUrl));
   if (!wantApp) {
-    // Wait for the first auth check so a signed-in user never flashes the hero.
     if (!authChecked && !showHero) return null;
     return (
       <Landing
+        showAuth={heroAuth}
+        onAuthChange={(mode) => {
+          setHeroAuth(mode);
+          const url = new URL(window.location.href);
+          if (mode === 'signin' || mode === 'signup') url.searchParams.set('auth', mode);
+          else url.searchParams.delete('auth');
+          window.history.replaceState({}, '', url.pathname + url.search);
+        }}
+        onAuthClose={closeHero}
         onEnter={enterGuest}
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
@@ -758,7 +795,7 @@ function App() {
         {user ? (
           <div className="raillogo">lock in</div>
         ) : (
-          <button type="button" className="raillogo raillogo--clickable" onClick={handleShowHero}>
+          <button type="button" className="raillogo raillogo--clickable" onClick={() => navigateToHero(null)}>
             lock in
           </button>
         )}
@@ -796,7 +833,7 @@ function App() {
                   theme={theme}
                   user={user}
                   onSignOut={handleSignOut}
-                  onShowHero={handleShowHero}
+                  onShowHero={navigateToHero}
                   onNameChange={(name) => setUser((u) => (u ? { ...u, name } : u))}
                 />
               )}

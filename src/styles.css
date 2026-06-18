@@ -243,6 +243,25 @@ a { color: inherit; text-decoration: none; }
   background: var(--beige);
   color: var(--ink);
 }
+.landing-auth-focus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+.landing-auth-focus__inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+}
+.landing-auth-wordmark {
+  font-size: 28px;
+}
 
 .flow { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
 .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .42; }

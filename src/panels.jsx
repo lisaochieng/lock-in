@@ -404,7 +404,7 @@ function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) 
           save your tasks, goals, streaks and favourite spaces, and pick up on any device.
         </div>
       </div>
-      <button onClick={onShowHero} className="bigbtn" style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk, border: 'none' }}>
+      <button type="button" onClick={() => onShowHero?.('signup')} className="bigbtn" style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk, border: 'none' }}>
         sign in or create account
       </button>
     </div>
