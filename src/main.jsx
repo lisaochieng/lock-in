@@ -25,6 +25,8 @@ import * as sessions from './lib/sessions';
 import { joinRoom, getRoom, leaveRoom, roomInviteLink, isValidRoomId } from './lib/rooms';
 import './styles.css';
 
+const SERIF = "'Cormorant Garamond', Georgia, serif";
+
 const parseHeroAuth = () => {
   const auth = new URLSearchParams(window.location.search).get('auth');
   return auth === 'signin' || auth === 'signup' ? auth : null;
