@@ -1137,7 +1137,7 @@ function ProgressPanelImpl({ theme, userId, settings, tasks = [], todayMinutes =
       <div style={{ display: 'flex', gap: 9 }}>
         {statCard(<Clock size={15} />, 'focused', `${analysis.todayMinutes}m`)}
         {statCard(<Flame size={15} />, 'streak', analysis.streak)}
-        {statCard(<Check size={15} />, 'tasks', `${tasksPct}%`)}
+        {statCard(<Check size={15} />, 'tasks', `${analysis.tasksCompleted ?? tasksPct}%`)}
       </div>
 
       <div>
