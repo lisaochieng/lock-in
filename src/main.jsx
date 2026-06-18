@@ -99,7 +99,6 @@ function App() {
 
   const [activeSpace, setActiveSpace] = usePersistentState('lockin-space', 'rainy-library');
   const [panel, setPanel] = useState('spaces'); // spaces | profile | calendar | null
-  const [spaceQuery, setSpaceQuery] = useState('');
   const [category, setCategory] = useState('all');
 
   const [user, setUser] = useState(null);
@@ -501,7 +500,7 @@ function App() {
     if (id) { setActiveVideo(id); setVideoStart(0); setVideoStarted(true); }
   };
 
-  const embedUrl = activeVideo ? buildYouTubeEmbedUrl(activeVideo) : '';
+  const embedUrl = activeVideo ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart }) : '';
 
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const widgetInit = {
@@ -535,13 +534,27 @@ function App() {
 
       {videoStarted && embedUrl && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-          <iframe
-            title="peaceful study ambience"
-            src={embedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            frameBorder={0}
-            style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max(100vw, 177.78vh)', height: 'max(100vh, 56.25vw)' }}
-          />
+          <div style={{ position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}>
+            <iframe
+              title="peaceful study ambience"
+              src={embedUrl}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              frameBorder={0}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%,-50%)',
+                width: 'max(100vw, 177.78vh)',
+                height: 'max(100vh, 56.25vw)',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              aria-hidden
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1 }}
+            />
+          </div>
           <div style={{ position: 'absolute', inset: 0, background: theme.tone === 'light' ? 'rgba(240,245,248,0.30)' : 'rgba(8,12,16,0.42)', pointerEvents: 'none' }} />
         </div>
       )}
@@ -575,7 +588,7 @@ function App() {
             <button className="iconbtn" onClick={() => setPanel(null)} style={{ color: theme.textDim, transform: 'scaleX(-1)' }}><ChevronRight size={18} /></button>
           </div>
           {panel === 'spaces' && (
-            <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={(s) => setActiveSpace(s.id)} query={spaceQuery} setQuery={setSpaceQuery} cat={category} setCat={setCategory} favorites={favorites} onToggleFavorite={toggleFavorite} />
+            <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={(s) => setActiveSpace(s.id)} cat={category} setCat={setCategory} favorites={favorites} onToggleFavorite={toggleFavorite} />
           )}
           {panel === 'profile' && (
             <ProfilePanel theme={theme} user={user} onSignOut={handleSignOut} onShowHero={() => setShowHero(true)} />

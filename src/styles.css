@@ -28,6 +28,9 @@ button { font-family: inherit; cursor: pointer; }
 input { font-family: inherit; }
 input:focus { outline: none; }
 input::placeholder { color: currentColor; opacity: 0.46; }
+input.nospin::-webkit-outer-spin-button,
+input.nospin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input.nospin { -moz-appearance: textfield; appearance: textfield; }
 a { color: inherit; text-decoration: none; }
 
 .serif { font-family: var(--serif); }

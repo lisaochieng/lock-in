@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import {
   Timer, ListTodo, Target, BarChart3, Users, Play, Pause, RotateCcw,
-  Plus, Trash2, Check, GripVertical, X,
+  Plus, Trash2, Check, GripVertical, X, Minus,
 } from 'lucide-react';
 import { ProgressPanel, RoomPanel } from './panels';
 
@@ -197,6 +197,29 @@ export function TasksWidget(props) {
 /* ------- Goals ------- */
 export function GoalsWidget(props) {
   const { theme, settings, setSettings, todayMinutes, progressPercent } = props;
+  const stepGoal = (delta) => {
+    setSettings({ ...settings, dailyGoal: Math.max(5, (settings.dailyGoal || 5) + delta) });
+  };
+  const stepBtn = (delta) => (
+    <button
+      type="button"
+      onClick={() => stepGoal(delta)}
+      className="ghostbtn"
+      aria-label={delta < 0 ? 'decrease daily goal' : 'increase daily goal'}
+      style={{
+        width: 40,
+        height: 40,
+        flexShrink: 0,
+        justifyContent: 'center',
+        color: theme.text,
+        background: theme.chipBg,
+        border: `1px solid ${theme.chipBorder}`,
+        borderRadius: 10,
+      }}
+    >
+      {delta < 0 ? <Minus size={16} /> : <Plus size={16} />}
+    </button>
+  );
   return (
     <Widget {...props} title="goals" icon={<Target size={15} />} width={290}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -210,11 +233,19 @@ export function GoalsWidget(props) {
         <div style={{ width: `${progressPercent}%`, height: '100%', background: theme.accent, borderRadius: 6, transition: 'width .5s ease' }} />
       </div>
       <div style={{ fontSize: 10.5, color: theme.textFaint, margin: '16px 0 6px', textTransform: 'lowercase', letterSpacing: '.04em' }}>daily goal (min)</div>
-      <input
-        type="number" min="5" value={settings.dailyGoal}
-        onChange={(e) => setSettings({ ...settings, dailyGoal: Math.max(5, Number(e.target.value) || 5) })}
-        style={{ width: '100%', background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit' }}
-      />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+        {stepBtn(-5)}
+        <input
+          type="number"
+          min="5"
+          value={settings.dailyGoal}
+          onChange={(e) => setSettings({ ...settings, dailyGoal: Math.max(5, Number(e.target.value) || 5) })}
+          className="nospin"
+          aria-label="daily goal minutes"
+          style={{ flex: 1, textAlign: 'center', background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '10px 8px', fontSize: 14, fontFamily: 'inherit' }}
+        />
+        {stepBtn(5)}
+      </div>
     </Widget>
   );
 }

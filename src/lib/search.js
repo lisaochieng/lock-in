@@ -4,10 +4,6 @@
 
 const VIDEO_ID_PATTERN = /[a-zA-Z0-9_-]{11}/;
 
-const EMBED_QUERY =
-  'autoplay=1&mute=1&loop=1&controls=0&disablekb=1&fs=0&modestbranding=1'
-  + '&playsinline=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1';
-
 /**
  * Extract an 11-char YouTube video id from a full URL, youtu.be link, or bare id.
  * Returns '' when no id can be parsed.
@@ -30,7 +26,6 @@ export function extractVideoId(url) {
   const pathV = trimmed.match(/\/v\/([a-zA-Z0-9_-]{11})/);
   if (pathV) return pathV[1];
 
-  // Last resort: first 11-char token that looks like a video id.
   const fallback = trimmed.match(VIDEO_ID_PATTERN);
   return fallback ? fallback[0] : '';
 }
@@ -38,9 +33,31 @@ export function extractVideoId(url) {
 /**
  * Build a clean YouTube embed URL with hidden controls and looping enabled.
  * Accepts full URL, shortened youtu.be link, or bare video id.
+ * `options.start` — start offset in seconds (default 0).
  */
-export function buildYouTubeEmbedUrl(rawInput) {
+export function buildYouTubeEmbedUrl(rawInput, options = {}) {
   const videoId = extractVideoId(rawInput);
   if (!videoId) return '';
-  return `https://www.youtube.com/embed/${videoId}?${EMBED_QUERY}&playlist=${videoId}`;
+
+  const { start = 0 } = options;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const params = new URLSearchParams({
+    autoplay: '1',
+    mute: '1',
+    loop: '1',
+    controls: '0',
+    disablekb: '1',
+    fs: '0',
+    modestbranding: '1',
+    playsinline: '1',
+    rel: '0',
+    showinfo: '0',
+    iv_load_policy: '3',
+    enablejsapi: '1',
+    start: String(Math.max(0, Number(start) || 0)),
+    playlist: videoId,
+  });
+  if (origin) params.set('origin', origin);
+
+  return `https://www.youtube.com/embed/${videoId}?${params}`;
 }

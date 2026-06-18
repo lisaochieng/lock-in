@@ -27,40 +27,49 @@ import {
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
-export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery, cat, setCat, categories, favorites = [], onToggleFavorite }) {
+export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat, setCat, categories, favorites = [], onToggleFavorite }) {
   const [favOnly, setFavOnly] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
 
   useEffect(() => {
-    const q = query.trim();
+    const t = window.setTimeout(() => setDebouncedQuery(searchInput), 400);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const q = debouncedQuery.trim();
     if (!q) {
       setSearchResults(null);
       return undefined;
     }
     let active = true;
-    const timer = setTimeout(async () => {
+    (async () => {
       const { data, error } = await searchSpaces(q);
       if (!active) return;
       if (!error && data?.length) {
         const ids = new Set(data.map((row) => row.id));
-        setSearchResults(spaces.filter((s) => ids.has(s.id)));
+        setSearchResults(allSpaces.filter((s) => ids.has(s.id)));
       } else {
         const lower = q.toLowerCase();
-        setSearchResults(spaces.filter((s) => {
+        setSearchResults(allSpaces.filter((s) => {
           const text = `${s.name} ${s.tags || ''} ${s.mood} ${s.category}`.toLowerCase();
           return text.includes(lower);
         }));
       }
-    }, 300);
-    return () => { active = false; clearTimeout(timer); };
-  }, [query, spaces]);
+    })();
+    return () => { active = false; };
+  }, [debouncedQuery, allSpaces]);
 
-  const source = searchResults ?? spaces;
+  const source = searchResults ?? allSpaces;
   const list = useMemo(() => source.filter((s) => {
     if (favOnly && !favorites.includes(s.id)) return false;
     if (cat !== 'all' && s.category !== cat) return false;
     return true;
   }), [source, favOnly, favorites, cat]);
+
+  const hasSearch = searchInput.trim().length > 0;
 
   const tabBtn = (isFav, label, icon) => {
     const on = favOnly === isFav;
@@ -90,9 +99,23 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
       <div style={{ position: 'relative', marginBottom: 12 }}>
         <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: theme.textFaint, display: 'flex' }}><Search size={15} /></span>
         <input
-          value={query} placeholder="search spaces" onChange={(e) => setQuery(e.target.value)}
-          style={{ width: '100%', background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 12, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+          value={searchInput}
+          placeholder="search spaces..."
+          onChange={(e) => setSearchInput(e.target.value)}
+          aria-label="search spaces"
+          style={{ width: '100%', background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 12, padding: `10px ${hasSearch ? 36 : 12}px 10px 34px`, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
         />
+        {hasSearch && (
+          <button
+            type="button"
+            onClick={() => setSearchInput('')}
+            aria-label="clear search"
+            className="iconbtn"
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: theme.textFaint, width: 24, height: 24 }}
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* category chips */}
@@ -109,7 +132,9 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
       <div className="scroll" style={{ flex: 1, overflowY: 'auto', margin: '0 -4px', padding: '0 4px 4px' }}>
         {list.length === 0 ? (
           <div style={{ fontSize: 12.5, color: theme.textFaint, padding: '10px 2px' }}>
-            {favOnly ? 'no favorite spaces yet — tap a heart to add one.' : 'no spaces match that.'}
+            {favOnly && !hasSearch
+              ? 'no favorite spaces yet — tap a heart to add one.'
+              : 'no spaces found'}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
