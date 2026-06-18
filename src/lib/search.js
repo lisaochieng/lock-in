@@ -39,10 +39,11 @@ export function buildYouTubeEmbedUrl(rawInput, options = {}) {
   const videoId = extractVideoId(rawInput);
   if (!videoId) return '';
 
-  const { start = 0, muted = false } = options;
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const { start = 0 } = options;
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
   const params = new URLSearchParams({
     autoplay: '1',
+    mute: '1',
     loop: '1',
     controls: '0',
     disablekb: '1',
@@ -53,11 +54,12 @@ export function buildYouTubeEmbedUrl(rawInput, options = {}) {
     showinfo: '0',
     iv_load_policy: '3',
     enablejsapi: '1',
-    start: String(Math.max(0, Number(start) || 0)),
+    cc_load_policy: '0',
+    color: 'white',
+    origin,
     playlist: videoId,
+    start: String(Math.max(0, Number(start) || 0)),
   });
-  params.set('mute', muted ? '1' : '0');
-  if (origin) params.set('origin', origin);
 
   return `https://www.youtube-nocookie.com/embed/${videoId}?${params}`;
 }

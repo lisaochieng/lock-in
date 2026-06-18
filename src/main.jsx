@@ -736,7 +736,7 @@ function App() {
   };
 
   const ambienceEmbedUrl = videoStarted && activeVideo
-    ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart, muted: false })
+    ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart })
     : '';
 
   const wProps = (k) => ({
@@ -788,7 +788,11 @@ function App() {
             frameBorder={0}
             onLoad={handleIframeLoad}
           />
-          <div style={{ position: 'absolute', inset: 0, background: theme.tone === 'light' ? 'rgba(240,245,248,0.30)' : 'rgba(8,12,16,0.42)', pointerEvents: 'none' }} />
+          <div className="yt-shield" aria-hidden />
+          <div
+            className="yt-tint"
+            style={{ background: theme.tone === 'light' ? 'rgba(240,245,248,0.30)' : 'rgba(8,12,16,0.42)' }}
+          />
         </div>
       )}
 
