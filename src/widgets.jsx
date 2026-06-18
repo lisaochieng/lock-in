@@ -252,10 +252,10 @@ export function GoalsWidget(props) {
 
 /* ------- Progress ------- */
 export function ProgressWidget(props) {
-  const { theme, user, settings } = props;
+  const { theme, user, settings, tasks } = props;
   return (
     <Widget {...props} title="progress" icon={<BarChart3 size={15} />} width={320}>
-      <ProgressPanel theme={theme} userId={user?.id} settings={settings} />
+      <ProgressPanel theme={theme} userId={user?.id} settings={settings} tasks={tasks} />
     </Widget>
   );
 }

@@ -6,11 +6,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
-  Copy, LogOut, Users, Flame, BarChart3, Loader2,
+  Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
 } from 'lucide-react';
-import { fetchSessionsByMonth, fetchCompletedTasksByMonth, fetchAllTimeStats, fetchSessionStats } from './lib/sessions';
+import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
+import { fetchProgressAnalysis } from './lib/analytics';
 import { searchSpaces } from './lib/spaces';
-import { spaces } from './spaces';
 import {
   createRoom,
   joinRoom,
@@ -757,10 +757,31 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
   );
 }
 
-const spaceById = Object.fromEntries(spaces.map((s) => [s.id, s]));
+const sectionLabel = {
+  fontSize: 10.5,
+  textTransform: 'lowercase',
+  letterSpacing: '.04em',
+};
 
-const fmtSessionDate = (iso) =>
-  new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' }).toLowerCase();
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const dayAbbr = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(`${dateStr}T12:00:00`);
+  return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()];
+};
+
+const fmtBestSessionDate = (dateStr) => {
+  if (!dateStr) return '';
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString([], { month: 'long', day: 'numeric' }).toLowerCase();
+};
+
+const fmtPeakHour = (hour) => {
+  if (hour == null) return '—';
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+};
 
 function Skeleton({ theme, style }) {
   return (
@@ -783,55 +804,61 @@ function ProgressSkeleton({ theme }) {
       <div style={{ display: 'flex', gap: 9 }}>
         {[0, 1, 2].map((i) => <Skeleton key={i} theme={theme} style={{ flex: 1, height: 72, borderRadius: 13 }} />)}
       </div>
-      <Skeleton theme={theme} style={{ height: 14, width: '40%' }} />
-      <Skeleton theme={theme} style={{ height: 56, borderRadius: 8 }} />
-      <Skeleton theme={theme} style={{ height: 12, width: '55%' }} />
-      <Skeleton theme={theme} style={{ height: 44, borderRadius: 13 }} />
-      <Skeleton theme={theme} style={{ height: 44, borderRadius: 13 }} />
-      {[0, 1, 2].map((i) => <Skeleton key={`s${i}`} theme={theme} style={{ height: 36 }} />)}
+      <Skeleton theme={theme} style={{ height: 12, width: '28%' }} />
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={`ins${i}`} theme={theme} style={{ height: 14, width: `${72 - i * 8}%` }} />
+      ))}
+      <Skeleton theme={theme} style={{ height: 12, width: '32%' }} />
+      <Skeleton theme={theme} style={{ height: 72, borderRadius: 8 }} />
+      <Skeleton theme={theme} style={{ height: 12, width: '45%' }} />
+      <Skeleton theme={theme} style={{ height: 14, width: '80%' }} />
+      <Skeleton theme={theme} style={{ height: 14, width: '65%' }} />
     </div>
   );
 }
 
-export function ProgressPanel({ theme, userId, settings }) {
-  const [allTime, setAllTime] = useState(null);
-  const [weekly, setWeekly] = useState(null);
+export function ProgressPanel({ theme, userId, settings, tasks = [] }) {
+  const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [chartTip, setChartTip] = useState(null);
 
   useEffect(() => {
     if (!userId) {
-      setAllTime(null);
-      setWeekly(null);
+      setAnalysis(null);
       return undefined;
     }
     let active = true;
     setLoading(true);
-    Promise.all([
-      fetchAllTimeStats(userId),
-      fetchSessionStats(userId),
-    ])
-      .then(([a, w]) => {
+    fetchProgressAnalysis(userId)
+      .then(({ data, error }) => {
         if (!active) return;
-        setAllTime(a);
-        setWeekly(w);
+        if (!error && data) setAnalysis(data);
         setLoading(false);
       })
       .catch(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) return undefined;
+    const onSessionLogged = () => {
+      fetchProgressAnalysis(userId).then(({ data, error }) => {
+        if (!error && data) setAnalysis(data);
+      });
+    };
+    window.addEventListener('session:logged', onSessionLogged);
+    return () => window.removeEventListener('session:logged', onSessionLogged);
+  }, [userId]);
+
+  const tasksDone = tasks.filter((t) => t.done).length;
+  const tasksPct = tasks.length ? Math.round((tasksDone / tasks.length) * 100) : 0;
+  const dailyGoal = settings?.dailyGoal || 120;
+
   const statCard = (icon, label, value) => (
     <div style={{ flex: 1, textAlign: 'center', background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 13, padding: '13px 6px' }}>
       <div style={{ color: theme.textDim, display: 'flex', justifyContent: 'center', marginBottom: 6 }}>{icon}</div>
       <div style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 500, color: theme.text }}>{value}</div>
       <div style={{ fontSize: 10, color: theme.textFaint, marginTop: 2 }}>{label}</div>
-    </div>
-  );
-
-  const insightRow = (label, value) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 12px', background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 13 }}>
-      <span style={{ fontSize: 12.5, color: theme.textDim }}>{label}</span>
-      <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{value}</span>
     </div>
   );
 
@@ -843,70 +870,146 @@ export function ProgressPanel({ theme, userId, settings }) {
     );
   }
 
-  if (loading || !allTime || !weekly) {
+  if (loading || !analysis) {
     return <ProgressSkeleton theme={theme} />;
   }
 
-  const dailyGoal = settings?.dailyGoal || 120;
-  const breakdown = weekly.weeklyBreakdown || [];
+  const breakdown = analysis.weeklyBreakdown || [];
+  const weeklyGoal = analysis.weeklyGoal || settings?.weeklyGoal || 600;
+  const dailyTarget = weeklyGoal / 7;
+  const maxScale = Math.max(
+    dailyGoal,
+    dailyTarget,
+    ...breakdown.map((d) => d.minutes),
+    1,
+  );
+  const goalLinePct = Math.min(100, (dailyTarget / maxScale) * 100);
+  const today = todayKey();
+
+  const trendViews = {
+    improving: { icon: <ArrowUp size={13} />, text: 'up from last week', color: '#4ade80' },
+    declining: { icon: <ArrowDown size={13} />, text: 'down from last week', color: '#e88' },
+    steady: { icon: <span style={{ fontSize: 13, lineHeight: 1 }}>—</span>, text: 'consistent', color: theme.textFaint },
+  };
+  const trendView = trendViews[analysis.trend] || trendViews.steady;
+
+  const bestSessionLine = analysis.bestSession?.minutes > 0
+    ? `best session  ${analysis.bestSession.minutes} min · ${fmtBestSessionDate(analysis.bestSession.date)}`
+    : 'best session  —';
+
+  const peakLine = `peak focus  ${fmtPeakHour(analysis.mostProductiveHour)}`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: 420, overflowY: 'auto' }} className="scroll">
       <div style={{ display: 'flex', gap: 9 }}>
-        {statCard(<Clock size={15} />, 'focus time', `${allTime.totalHours}h`)}
-        {statCard(<Flame size={15} />, 'streak', `${allTime.streak}d`)}
-        {statCard(<Check size={15} />, 'tasks done', allTime.tasksCompleted)}
+        {statCard(<Clock size={15} />, 'focused', `${analysis.todayMinutes}m`)}
+        {statCard(<Flame size={15} />, 'streak', analysis.streak)}
+        {statCard(<Check size={15} />, 'tasks', `${tasksPct}%`)}
+      </div>
+
+      <div>
+        <div style={{ ...sectionLabel, color: theme.textFaint, marginBottom: 8 }}>insights</div>
+        {analysis.insights?.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {analysis.insights.slice(0, 3).map((line) => (
+              <div key={line} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: theme.textDim, lineHeight: 1.45 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: theme.accent, flexShrink: 0, marginTop: 6 }} />
+                <span>{line}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: theme.textFaint }}>complete a focus session to see insights.</div>
+        )}
       </div>
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 9 }}>
-          <span style={{ fontSize: 10.5, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>this week</span>
-          <span style={{ fontSize: 11.5, color: theme.textDim }}>{weekly.weeklyMinutes} min total</span>
+          <span style={{ ...sectionLabel, color: theme.textFaint }}>this week</span>
+          <span style={{ fontSize: 11.5, color: theme.textDim }}>{analysis.weeklyMinutes} min total</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 56 }}>
-          {breakdown.map((day, index) => {
-            const h = Math.max(8, Math.min(100, (day.minutes / dailyGoal) * 100));
-            const isToday = index === breakdown.length - 1;
-            return (
-              <div
-                key={day.day}
-                title={`${day.day}: ${day.minutes} min`}
-                style={{ flex: 1, height: `${h}%`, background: isToday ? theme.accent : theme.trackBg, borderRadius: 5, transition: 'height .4s ease' }}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {insightRow('best session', allTime.bestSessionMinutes > 0 ? `${allTime.bestSessionMinutes} min` : '—')}
-      {insightRow('most productive day', allTime.mostProductiveDay || '—')}
-
-      <div>
-        <div style={{ fontSize: 10.5, color: theme.textFaint, marginBottom: 8, textTransform: 'lowercase', letterSpacing: '.04em' }}>
-          recent sessions
-        </div>
-        {allTime.recentSessions.length === 0 ? (
-          <div style={{ fontSize: 12, color: theme.textFaint }}>no sessions logged yet.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {allTime.recentSessions.map((s, i) => {
-              const space = s.space_id ? spaceById[s.space_id] : null;
+        <div style={{ position: 'relative', height: 56, marginBottom: 6 }}>
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: `${goalLinePct}%`,
+              height: 1,
+              background: theme.chipBorder,
+              opacity: 0.55,
+              pointerEvents: 'none',
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: '100%' }}>
+            {breakdown.map((day, index) => {
+              const h = Math.max(8, Math.min(100, (day.minutes / maxScale) * 100));
+              const isToday = day.date === today;
+              const dayName = day.day || 'day';
               return (
-                <div
-                  key={s.id || i}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 4px', borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}
-                >
-                  <span style={{ color: theme.textFaint, display: 'flex' }}><BarChart3 size={13} /></span>
-                  <span style={{ flex: 1, fontSize: 12.5, color: theme.text }}>{fmtSessionDate(s.created_at)}</span>
-                  <span style={{ fontSize: 11.5, color: theme.textDim }}>{s.duration_minutes}m</span>
-                  <span style={{ fontSize: 11, color: theme.textFaint, maxWidth: 88, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }}>
-                    {space?.name || 'no space'}
-                  </span>
-                </div>
+                <button
+                  key={day.date || `${day.day}-${index}`}
+                  type="button"
+                  aria-label={`${day.minutes} min on ${dayName}`}
+                  onMouseEnter={() => setChartTip({ minutes: day.minutes, day: dayName })}
+                  onMouseLeave={() => setChartTip(null)}
+                  onFocus={() => setChartTip({ minutes: day.minutes, day: dayName })}
+                  onBlur={() => setChartTip(null)}
+                  style={{
+                    flex: 1,
+                    height: `${h}%`,
+                    background: isToday ? theme.accent : theme.trackBg,
+                    borderRadius: 5,
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'default',
+                    transition: 'height .4s ease',
+                  }}
+                />
               );
             })}
           </div>
-        )}
+          {chartTip && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -28,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: 11,
+                color: theme.text,
+                background: theme.chipBg,
+                border: `1px solid ${theme.chipBorder}`,
+                borderRadius: 8,
+                padding: '4px 8px',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              {chartTip.minutes} min on {chartTip.day}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {breakdown.map((day, index) => (
+            <div
+              key={`lbl-${day.date || index}`}
+              style={{ flex: 1, textAlign: 'center', fontSize: 9.5, color: theme.textFaint, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {dayAbbr(day.date) || day.day?.[0]?.toUpperCase()}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: trendView.color }}>
+        {trendView.icon}
+        <span>{trendView.text}</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: theme.textDim }}>
+        <div>{bestSessionLine}</div>
+        <div>{peakLine}</div>
       </div>
     </div>
   );
