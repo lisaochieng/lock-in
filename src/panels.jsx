@@ -3,11 +3,25 @@
    Glass styling from claude.ai/design; keeps the app's auth and
    calendar deep-link features.
    =========================================================== */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
+  Copy, LogOut, Users,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
+import {
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  getRoom,
+  getRoomMembers,
+  updatePresence,
+  subscribeToRoom,
+  unsubscribeFromRoom,
+  parseRoomInvite,
+  roomInviteLink,
+  isValidRoomId,
+} from './lib/rooms';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
@@ -351,6 +365,278 @@ export function CalendarPanel({ theme, userId }) {
           sign in to see your focus history on the calendar.
         </div>
       )}
+    </div>
+  );
+}
+
+const ACTIVE_MS = 2 * 60 * 1000;
+
+const memberActive = (lastSeenAt) => {
+  if (!lastSeenAt) return false;
+  return Date.now() - new Date(lastSeenAt).getTime() < ACTIVE_MS;
+};
+
+const displayName = (member, userId) => {
+  if (member.name) return member.name;
+  if (member.user_id === userId) return 'you';
+  return 'member';
+};
+
+const memberInitials = (member, userId) => {
+  const name = displayName(member, userId);
+  return name[0]?.toUpperCase() || '?';
+};
+
+export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = null }) {
+  const [members, setMembers] = useState([]);
+  const [joinInput, setJoinInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const onRoomChangeRef = useRef(onRoomChange);
+  const roomRef = useRef(room);
+  const userRef = useRef(user);
+  useEffect(() => { onRoomChangeRef.current = onRoomChange; }, [onRoomChange]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  const inviteLink = room?.id ? roomInviteLink(room.id) : '';
+
+  // Realtime membership + presence heartbeat while in a room.
+  useEffect(() => {
+    const roomId = room?.id;
+    const userId = user?.id;
+    if (!roomId || !userId) {
+      setMembers([]);
+      return undefined;
+    }
+
+    let active = true;
+    let channel = null;
+
+    const refresh = async () => {
+      const list = await getRoomMembers(roomId);
+      if (active) setMembers(list);
+    };
+
+    refresh();
+    channel = subscribeToRoom(roomId, () => { refresh(); });
+
+    updatePresence(roomId, userId, activeTaskTitle);
+    const heartbeat = window.setInterval(() => {
+      updatePresence(roomId, userId, activeTaskTitle);
+    }, 60_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(heartbeat);
+      unsubscribeFromRoom(channel);
+      leaveRoom(roomId, userId);
+    };
+  }, [room?.id, user?.id]);
+
+  // Leave + clear parent state when the panel unmounts (widget closed / sign-out).
+  useEffect(() => () => {
+    const r = roomRef.current;
+    const u = userRef.current;
+    if (r?.id && u?.id) {
+      leaveRoom(r.id, u.id);
+      onRoomChangeRef.current(null);
+    }
+  }, []);
+
+  // Sync active task when it changes.
+  useEffect(() => {
+    if (!room?.id || !user?.id) return;
+    updatePresence(room.id, user.id, activeTaskTitle);
+  }, [room?.id, user?.id, activeTaskTitle]);
+
+  const handleCreate = async () => {
+    if (!user?.id) return;
+    const name = window.prompt('room name');
+    if (!name?.trim()) return;
+    setBusy(true);
+    setError('');
+    const created = await createRoom(name.trim(), user.id);
+    setBusy(false);
+    if (!created) {
+      setError('could not create room — try again.');
+      return;
+    }
+    onRoomChange({ id: created.id, name: created.name });
+  };
+
+  const handleJoin = async () => {
+    if (!user?.id) return;
+    const roomId = parseRoomInvite(joinInput);
+    if (!roomId) {
+      setError('paste a room id or invite link.');
+      return;
+    }
+    if (!isValidRoomId(roomId)) {
+      setError('that does not look like a valid room id.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const { error: joinError } = await joinRoom(roomId, user.id);
+    if (joinError) {
+      setBusy(false);
+      setError('could not join that room.');
+      return;
+    }
+    const details = await getRoom(roomId);
+    setBusy(false);
+    if (!details) {
+      setError('joined, but could not load room details.');
+      return;
+    }
+    setJoinInput('');
+    onRoomChange({ id: details.id, name: details.name });
+  };
+
+  const handleLeave = () => {
+    onRoomChange(null);
+  };
+
+  const copyInvite = () => {
+    if (!inviteLink) return;
+    navigator.clipboard?.writeText(inviteLink);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  };
+
+  const sortedMembers = useMemo(() => {
+    const uid = user?.id;
+    return [...members].sort((a, b) => {
+      if (a.user_id === uid) return -1;
+      if (b.user_id === uid) return 1;
+      return new Date(a.joined_at) - new Date(b.joined_at);
+    });
+  }, [members, user?.id]);
+
+  if (!user) {
+    return (
+      <div style={{ fontSize: 12.5, color: theme.textDim, lineHeight: 1.55 }}>
+        sign in to create or join a study room and see who is focusing with you.
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={busy}
+          className="bigbtn"
+          style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk, border: 'none' }}
+        >
+          <Users size={16} /> create a room
+        </button>
+
+        <div>
+          <div style={{ fontSize: 11, color: theme.textFaint, marginBottom: 8, textTransform: 'lowercase', letterSpacing: '.04em' }}>
+            join a room
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={joinInput}
+              onChange={(e) => { setJoinInput(e.target.value); setError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+              placeholder="room id or invite link"
+              aria-label="room id or invite link"
+              style={{ flex: 1, background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit' }}
+            />
+            <button
+              type="button"
+              onClick={handleJoin}
+              disabled={busy || !joinInput.trim()}
+              className="primarybtn sm"
+              style={{ background: theme.accent, color: theme.accentInk }}
+            >
+              join
+            </button>
+          </div>
+        </div>
+
+        {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: theme.text, lineHeight: 1.2 }}>
+        {room.name}
+      </div>
+
+      <div style={{ fontSize: 11, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>
+        members · {sortedMembers.length}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 220, overflowY: 'auto' }} className="scroll">
+        {sortedMembers.length === 0 ? (
+          <div style={{ fontSize: 12, color: theme.textFaint }}>no members yet.</div>
+        ) : sortedMembers.map((m) => {
+          const isYou = m.user_id === user.id;
+          const online = memberActive(m.last_seen_at);
+          const name = isYou ? (user.name || displayName(m, user.id)) : displayName(m, user.id);
+          return (
+            <div key={m.user_id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ position: 'relative', flexShrink: 0 }}>
+                {m.avatar_url ? (
+                  <img src={m.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(150deg, ${theme.accent}, rgba(255,255,255,0.25))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: theme.accentInk }}>
+                    {memberInitials(m, user.id)}
+                  </span>
+                )}
+                {online && (
+                  <span style={{ position: 'absolute', right: -1, bottom: -1, width: 9, height: 9, borderRadius: '50%', background: '#4ade80', border: `2px solid ${theme.panelBg}` }} />
+                )}
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13, color: theme.text, fontWeight: isYou ? 600 : 400 }}>{name}</span>
+                  {isYou && <span style={{ fontSize: 10, color: theme.textFaint }}>you</span>}
+                </span>
+                <span style={{ display: 'block', fontSize: 11.5, color: theme.textFaint, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {m.active_task ? `focusing on ${m.active_task}` : 'not focusing on a task'}
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={copyInvite}
+        className="ghostbtn"
+        style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
+      >
+        {copied ? <Check size={15} /> : <Copy size={15} />}
+        {copied ? 'invite link copied' : 'copy invite link'}
+      </button>
+
+      <div style={{ fontSize: 10.5, color: theme.textFaint, wordBreak: 'break-all', lineHeight: 1.45 }}>
+        {inviteLink}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleLeave}
+        disabled={busy}
+        className="ghostbtn"
+        style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
+      >
+        <LogOut size={15} /> leave room
+      </button>
+
+      {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
     </div>
   );
 }

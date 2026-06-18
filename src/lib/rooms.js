@@ -19,6 +19,49 @@ import { supabase } from './supabase';
 
 const nowIso = () => new Date().toISOString();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Extract a room id from a pasted invite URL or raw id string. */
+export function parseRoomInvite(input) {
+  const trimmed = (input || '').trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    const fromQuery = url.searchParams.get('room');
+    if (fromQuery) return fromQuery.trim();
+  } catch {
+    // not a URL — fall through to raw id
+  }
+  return trimmed;
+}
+
+/** Build the shareable invite URL for a room. */
+export function roomInviteLink(roomId) {
+  const base = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}`
+    : 'https://yourapp.com';
+  return `${base}?room=${encodeURIComponent(roomId)}`;
+}
+
+/** Fetch a single room by id (or null). */
+export async function getRoom(roomId) {
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('id, name, created_by, created_at, is_active')
+    .eq('id', roomId)
+    .single();
+
+  if (error) {
+    console.error('[rooms] getRoom error:', error);
+    return null;
+  }
+  return data;
+}
+
+export function isValidRoomId(roomId) {
+  return UUID_RE.test(roomId || '');
+}
+
 /**
  * Create a room and add the creator as the first member.
  * Returns the room object (or null on error).
@@ -85,7 +128,7 @@ export async function leaveRoom(roomId, userId) {
 export async function getRoomMembers(roomId) {
   const { data: members, error } = await supabase
     .from('room_members')
-    .select('user_id, joined_at, last_seen_at')
+    .select('user_id, joined_at, last_seen_at, active_task')
     .eq('room_id', roomId)
     .order('joined_at', { ascending: true });
 
@@ -117,6 +160,7 @@ export async function getRoomMembers(roomId) {
     avatar_url: profilesById[m.user_id]?.avatar_url ?? null,
     last_seen_at: m.last_seen_at,
     joined_at: m.joined_at,
+    active_task: m.active_task ?? null,
   }));
 }
 
@@ -124,13 +168,16 @@ export async function getRoomMembers(roomId) {
  * Mark the user as currently present in the room (upsert last_seen_at = now).
  * Returns { data, error }.
  */
-export async function updatePresence(roomId, userId) {
+export async function updatePresence(roomId, userId, activeTask = null) {
+  const row = {
+    room_id: roomId,
+    user_id: userId,
+    last_seen_at: nowIso(),
+    active_task: activeTask,
+  };
   const { data, error } = await supabase
     .from('room_members')
-    .upsert(
-      { room_id: roomId, user_id: userId, last_seen_at: nowIso() },
-      { onConflict: 'room_id,user_id' }
-    )
+    .upsert(row, { onConflict: 'room_id,user_id' })
     .select()
     .single();
 

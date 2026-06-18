@@ -69,6 +69,7 @@ create table if not exists public.room_members (
   user_id       uuid not null references auth.users (id) on delete cascade,
   joined_at     timestamptz not null default now(),
   last_seen_at  timestamptz not null default now(),
+  active_task   text,
   unique (room_id, user_id)
 );
 
