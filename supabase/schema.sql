@@ -223,3 +223,9 @@ create policy "room_members update self" on public.room_members
 drop policy if exists "room_members delete self" on public.room_members;
 create policy "room_members delete self" on public.room_members
   for delete using (auth.uid() = user_id);
+
+-- ===========================================================
+-- Analytics RPC (see migration 0007_get_user_stats.sql)
+-- ===========================================================
+-- Canonical definition lives in supabase/migrations/0007_get_user_stats.sql.
+-- Run that migration in the Supabase SQL editor to deploy get_user_stats().
