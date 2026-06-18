@@ -755,7 +755,13 @@ function App() {
 
       {/* left rail */}
       <div className="rail" style={{ background: theme.railBg, borderRight: `1px solid ${theme.panelBorder}` }}>
-        <div className="raillogo" style={{ color: theme.text }}>lock in</div>
+        {user ? (
+          <div className="raillogo">lock in</div>
+        ) : (
+          <button type="button" className="raillogo raillogo--clickable" onClick={handleShowHero}>
+            lock in
+          </button>
+        )}
         <div className="railgroup">
           <RailBtn theme={theme} icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
           <RailBtn theme={theme} icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />

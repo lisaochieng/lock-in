@@ -124,11 +124,14 @@ function SpacesPanelImpl({ theme, spaces: allSpaces, activeId, onSelect, cat, se
       </div>
 
       {/* category chips */}
-      <div className="scroll" style={{ display: 'flex', flexWrap: 'nowrap', gap: 7, marginBottom: 14, overflowX: 'auto', paddingBottom: 2 }}>
+      <div className="category-tabs-row scroll">
         {categories.map((c) => (
           <button
-            key={c} onClick={() => setCat(c)} className="chip"
-            style={{ flexShrink: 0, color: cat === c ? theme.accentInk : theme.chipText, background: cat === c ? theme.accent : theme.chipBg, border: `1px solid ${cat === c ? 'transparent' : theme.chipBorder}` }}
+            key={c}
+            type="button"
+            onClick={() => setCat(c)}
+            className="category-tab"
+            style={{ color: cat === c ? theme.accentInk : theme.chipText, background: cat === c ? theme.accent : theme.chipBg, border: `1px solid ${cat === c ? 'transparent' : theme.chipBorder}` }}
           >{c}</button>
         ))}
       </div>
