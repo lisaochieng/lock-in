@@ -1,6 +1,8 @@
 /* ===========================================================
-   Progress analytics — single RPC + insight generation.
+   Progress stats — single RPC + insight generation.
    No UI; built on get_user_stats() in Supabase.
+   (Named progress.js — not analytics.js — so ad blockers
+   don't block the Vite module request.)
    =========================================================== */
 import { supabase } from './supabase';
 
@@ -117,7 +119,7 @@ export async function fetchProgressAnalysis(userId) {
   });
 
   if (error) {
-    console.error('[analytics] fetchProgressAnalysis error:', error);
+    console.error('[progress] fetchProgressAnalysis error:', error);
     return { data: null, error };
   }
 

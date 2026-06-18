@@ -9,7 +9,7 @@ import {
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
-import { fetchProgressAnalysis } from './lib/analytics';
+import { fetchProgressAnalysis } from './lib/progress';
 import { searchSpaces } from './lib/spaces';
 import {
   createRoom,
@@ -832,7 +832,11 @@ export function ProgressPanel({ theme, userId, settings, tasks = [] }) {
     fetchProgressAnalysis(userId)
       .then(({ data, error }) => {
         if (!active) return;
-        if (!error && data) setAnalysis(data);
+        setAnalysis(data || {
+          todayMinutes: 0, weeklyMinutes: 0, weeklyGoal: 600, streak: 0,
+          weeklyBreakdown: [], trend: 'steady', insights: [],
+          bestSession: { minutes: 0, date: null }, mostProductiveHour: null,
+        });
         setLoading(false);
       })
       .catch(() => { if (active) setLoading(false); });
