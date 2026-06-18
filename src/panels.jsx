@@ -6,7 +6,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
-  Copy, LogOut, Users, Flame, BarChart3,
+  Copy, LogOut, Users, Flame, BarChart3, Loader2,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth, fetchAllTimeStats, fetchSessionStats } from './lib/sessions';
 import { searchSpaces } from './lib/spaces';
@@ -441,9 +441,13 @@ const memberInitials = (member, userId) => {
 export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = null }) {
   const [members, setMembers] = useState([]);
   const [joinInput, setJoinInput] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [view, setView] = useState('idle'); // idle | creating
+  const [createName, setCreateName] = useState('');
+  const [createPending, setCreatePending] = useState(false);
+  const [joinBusy, setJoinBusy] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const createInputRef = useRef(null);
 
   const onRoomChangeRef = useRef(onRoomChange);
   const roomRef = useRef(room);
@@ -451,6 +455,17 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
   useEffect(() => { onRoomChangeRef.current = onRoomChange; }, [onRoomChange]);
   useEffect(() => { roomRef.current = room; }, [room]);
   useEffect(() => { userRef.current = user; }, [user]);
+
+  useEffect(() => {
+    if (view === 'creating') createInputRef.current?.focus();
+  }, [view]);
+
+  useEffect(() => {
+    if (!room) {
+      setView('idle');
+      setCreateName('');
+    }
+  }, [room]);
 
   const inviteLink = room?.id ? roomInviteLink(room.id) : '';
 
@@ -503,19 +518,28 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
     updatePresence(room.id, user.id, activeTaskTitle);
   }, [room?.id, user?.id, activeTaskTitle]);
 
-  const handleCreate = async () => {
-    if (!user?.id) return;
-    const name = window.prompt('room name');
-    if (!name?.trim()) return;
-    setBusy(true);
+  const submitCreate = async () => {
+    if (!user?.id || createPending) return;
+    const name = createName.trim();
+    if (!name) return;
+    setCreatePending(true);
     setError('');
-    const created = await createRoom(name.trim(), user.id);
-    setBusy(false);
+    const created = await createRoom(name, user.id);
+    setCreatePending(false);
     if (!created) {
       setError('could not create room — try again.');
       return;
     }
+    setCreateName('');
+    setView('idle');
     onRoomChange({ id: created.id, name: created.name });
+  };
+
+  const cancelCreate = () => {
+    if (createPending) return;
+    setCreateName('');
+    setError('');
+    setView('idle');
   };
 
   const handleJoin = async () => {
@@ -529,16 +553,16 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
       setError('that does not look like a valid room id.');
       return;
     }
-    setBusy(true);
+    setJoinBusy(true);
     setError('');
     const { error: joinError } = await joinRoom(roomId, user.id);
     if (joinError) {
-      setBusy(false);
+      setJoinBusy(false);
       setError('could not join that room.');
       return;
     }
     const details = await getRoom(roomId);
-    setBusy(false);
+    setJoinBusy(false);
     if (!details) {
       setError('joined, but could not load room details.');
       return;
@@ -576,12 +600,54 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
   }
 
   if (!room) {
+    if (view === 'creating') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 11, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>
+            room name
+          </div>
+          <input
+            ref={createInputRef}
+            value={createName}
+            onChange={(e) => { setCreateName(e.target.value); setError(''); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitCreate();
+              if (e.key === 'Escape') cancelCreate();
+            }}
+            placeholder="name your room"
+            aria-label="room name"
+            disabled={createPending}
+            style={{ width: '100%', background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit' }}
+          />
+          <button
+            type="button"
+            onClick={submitCreate}
+            disabled={createPending || !createName.trim()}
+            className="primarybtn sm"
+            style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk }}
+          >
+            {createPending ? <Loader2 size={16} className="spin" /> : null}
+            create
+          </button>
+          <button
+            type="button"
+            onClick={cancelCreate}
+            disabled={createPending}
+            style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: theme.textFaint, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' }}
+          >
+            cancel
+          </button>
+          {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
+        </div>
+      );
+    }
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <button
           type="button"
-          onClick={handleCreate}
-          disabled={busy}
+          onClick={() => { setError(''); setView('creating'); }}
+          disabled={joinBusy}
           className="bigbtn"
           style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk, border: 'none' }}
         >
@@ -604,7 +670,7 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
             <button
               type="button"
               onClick={handleJoin}
-              disabled={busy || !joinInput.trim()}
+              disabled={joinBusy || !joinInput.trim()}
               className="primarybtn sm"
               style={{ background: theme.accent, color: theme.accentInk }}
             >
@@ -680,7 +746,6 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
       <button
         type="button"
         onClick={handleLeave}
-        disabled={busy}
         className="ghostbtn"
         style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
       >
