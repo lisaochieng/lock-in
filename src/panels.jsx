@@ -9,8 +9,7 @@ import {
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
   Volume2, VolumeX, Pencil, Play, Pause, RotateCcw,
 } from 'lucide-react';
-import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
-import { fetchProgressAnalysis, emptyProgressAnalysis, fetchUserProfileStats } from './lib/progress';
+import { fetchProgressAnalysis, emptyProgressAnalysis, fetchUserProfileStats, fetchCalendarData } from './lib/progress';
 import { supabase } from './lib/supabase';
 import { searchSpaces } from './lib/spaces';
 import { getAllSpaces, getSpaceById } from './spaces';
@@ -415,49 +414,46 @@ const MONTH_NAMES = [
 ];
 const WEEKDAYS = ['s', 'm', 't', 'w', 't', 'f', 's'];
 
-const sessionMinutes = (rows, type) =>
-  (rows || []).reduce((sum, r) => (
-    (!type || r.session_type === type) ? sum + (r.duration_minutes || 0) : sum
-  ), 0);
-
-/** Focus-minute → fill level (0 none · 1 light · 2 medium · 3 full). */
-function dotLevel(minutes) {
+/** Focus minutes → fill level (0 none · 1 light · 2 medium · 3 full). */
+function focusLevel(minutes) {
   if (minutes <= 0) return 0;
-  if (minutes < 60) return 1;
-  if (minutes < 120) return 2;
+  if (minutes <= 30) return 1;
+  if (minutes <= 90) return 2;
   return 3;
 }
 
 const fmtClock = (iso) =>
   new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
 
-const sessionLabel = { focus: 'focus', shortBreak: 'short break', longBreak: 'long break' };
-
 function CalendarPanelImpl({ theme, userId }) {
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
-  const [sessionsByDay, setSessionsByDay] = useState({});
-  const [tasksByDay, setTasksByDay] = useState({});
+  const [calendarData, setCalendarData] = useState({});
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch on mount and whenever the user or the visible month changes.
   useEffect(() => {
     setSelected(null);
-    if (!userId) { setSessionsByDay({}); setTasksByDay({}); return undefined; }
+    if (!userId) {
+      setCalendarData({});
+      return undefined;
+    }
+
     let active = true;
     setLoading(true);
-    Promise.all([
-      fetchSessionsByMonth(userId, view.year, view.month + 1),
-      fetchCompletedTasksByMonth(userId, view.year, view.month + 1),
-    ])
-      .then(([s, t]) => {
+    fetchCalendarData(userId, view.year, view.month + 1)
+      .then((data) => {
         if (!active) return;
-        setSessionsByDay(s || {});
-        setTasksByDay(t || {});
+        setCalendarData(data || {});
         setLoading(false);
       })
-      .catch(() => { if (active) setLoading(false); });
+      .catch(() => {
+        if (active) {
+          setCalendarData({});
+          setLoading(false);
+        }
+      });
+
     return () => { active = false; };
   }, [userId, view.year, view.month]);
 
@@ -481,10 +477,17 @@ function CalendarPanelImpl({ theme, userId }) {
     });
   };
 
-  const selDate = selected ? new Date(view.year, view.month, selected) : null;
-  const selSessions = (selected && sessionsByDay[selected]) || [];
-  const selTasks = (selected && tasksByDay[selected]) || [];
-  const selFocus = sessionMinutes(selSessions, 'focus');
+  const selDayData = selected ? calendarData[selected] : null;
+
+  if (!userId) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, textAlign: 'center' }}>
+        <span style={{ fontSize: 13, color: theme.textDim, lineHeight: 1.55 }}>
+          sign in to see your calendar
+        </span>
+      </div>
+    );
+  }
 
   const arrow = (dir, onClick) => (
     <button
@@ -497,7 +500,6 @@ function CalendarPanelImpl({ theme, userId }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0, overflowY: 'auto' }} className="scroll">
-      {/* month navigation */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {arrow(-1, () => goMonth(-1))}
         <span style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, letterSpacing: '.01em', opacity: loading ? 0.6 : 1 }}>
@@ -506,45 +508,79 @@ function CalendarPanelImpl({ theme, userId }) {
         {arrow(1, () => goMonth(1))}
       </div>
 
-      {/* weekday header */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
         {WEEKDAYS.map((w, i) => (
           <div key={i} style={{ textAlign: 'center', fontSize: 10, color: theme.textFaint, textTransform: 'uppercase', letterSpacing: '.06em' }}>{w}</div>
         ))}
       </div>
 
-      {/* day grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
         {cells.map((day, i) => {
           if (day === null) return <div key={`b${i}`} />;
-          const focus = sessionMinutes(sessionsByDay[day], 'focus');
-          const level = dotLevel(focus);
+
+          const dayData = calendarData[day];
+          const minutes = dayData?.totalMinutes ?? 0;
+          const level = focusLevel(minutes);
+          const hasData = minutes > 0;
           const isToday = isTodayMonth && day === todayNum;
           const isSel = day === selected;
-          const full = level === 3;
+
+          let color = theme.textFaint;
+          if (isToday) color = theme.accent;
+          else if (hasData) color = theme.text;
+
           return (
             <button
               key={day}
               onClick={() => setSelected((s) => (s === day ? null : day))}
-              title={focus > 0 ? `${focus} min focused` : undefined}
+              title={hasData ? `${minutes} min focused` : undefined}
               style={{
-                position: 'relative', aspectRatio: '1 / 1', borderRadius: 9, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontVariantNumeric: 'tabular-nums',
-                color: full ? theme.accentInk : theme.text,
-                background: full ? theme.accent : (isSel ? theme.chipBg : 'transparent'),
+                position: 'relative',
+                aspectRatio: '1 / 1',
+                borderRadius: 9,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: isToday ? 600 : hasData ? 500 : 400,
+                fontVariantNumeric: 'tabular-nums',
+                color,
+                background: level === 3
+                  ? `color-mix(in srgb, ${theme.accent} 30%, transparent)`
+                  : (isSel ? theme.chipBg : 'transparent'),
                 border: isToday
                   ? `1.5px solid ${theme.accent}`
                   : `1px solid ${isSel ? theme.panelBorder : 'transparent'}`,
                 transition: 'background .15s ease',
+                animation: loading ? 'pulse 1.4s ease-in-out infinite' : undefined,
               }}
             >
               {day}
-              {level > 0 && level < 3 && (
+              {level === 1 && (
                 <span style={{
-                  position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
-                  width: level === 2 ? 6 : 5, height: level === 2 ? 6 : 5, borderRadius: '50%',
-                  background: theme.accent, opacity: level === 2 ? 1 : 0.5,
+                  position: 'absolute',
+                  bottom: 4,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: theme.accent,
+                  opacity: 0.4,
+                }} />
+              )}
+              {level === 2 && (
+                <span style={{
+                  position: 'absolute',
+                  bottom: 4,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: theme.accent,
+                  opacity: 0.7,
                 }} />
               )}
             </button>
@@ -552,55 +588,52 @@ function CalendarPanelImpl({ theme, userId }) {
         })}
       </div>
 
-      {/* legend */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: theme.textFaint }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: theme.accent, opacity: 0.5 }} /> &lt;1h</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.accent }} /> 1–2h</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: theme.accent }} /> 2h+</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: theme.accent, opacity: 0.4 }} /> 1–30m
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.accent, opacity: 0.7 }} /> 31–90m
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 9, height: 9, borderRadius: 3, background: `color-mix(in srgb, ${theme.accent} 30%, transparent)` }} /> 90m+
+        </span>
       </div>
 
-      {/* day popover */}
       {selected && (
         <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 16, padding: 16, animation: 'flyIn .2s ease' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>
-              {selDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }).toLowerCase()}
-            </span>
-            <span style={{ fontSize: 12.5, color: theme.accent, fontWeight: 600 }}>{selFocus} min focused</span>
+          <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: theme.text, marginBottom: 10 }}>
+            {MONTH_NAMES[view.month]} {selected}
           </div>
 
-          <div style={{ fontSize: 10.5, color: theme.textFaint, marginBottom: 8, textTransform: 'lowercase', letterSpacing: '.04em' }}>sessions</div>
-          {selSessions.length === 0 ? (
-            <div style={{ fontSize: 12, color: theme.textFaint, marginBottom: 6 }}>no sessions this day.</div>
-          ) : (
-            selSessions.map((s, i) => (
-              <div key={s.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}>
-                <span style={{ color: theme.textFaint, display: 'flex' }}><Clock size={13} /></span>
-                <span style={{ flex: 1, fontSize: 12.5, color: theme.text }}>{fmtClock(s.created_at)}</span>
-                <span style={{ fontSize: 11.5, color: theme.textDim }}>{sessionLabel[s.session_type] || s.session_type} · {s.duration_minutes}m</span>
+          {selDayData && (selDayData.totalMinutes > 0 || selDayData.sessions?.length > 0 || selDayData.tasksCompleted > 0) ? (
+            <>
+              <div style={{ fontSize: 13, color: theme.text, marginBottom: 14 }}>
+                {selDayData.totalMinutes} min focused
               </div>
-            ))
-          )}
 
-          <div style={{ fontSize: 10.5, color: theme.textFaint, margin: '14px 0 8px', textTransform: 'lowercase', letterSpacing: '.04em' }}>
-            tasks completed{selTasks.length ? ` · ${selTasks.length}` : ''}
-          </div>
-          {selTasks.length === 0 ? (
-            <div style={{ fontSize: 12, color: theme.textFaint }}>no tasks completed.</div>
-          ) : (
-            selTasks.map((t, i) => (
-              <div key={t.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
-                <span style={{ width: 16, height: 16, borderRadius: 5, background: theme.accent, color: theme.accentInk, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Check size={11} strokeWidth={2.6} /></span>
-                <span style={{ flex: 1, fontSize: 12.5, color: theme.textDim }}>{t.title}</span>
+              <div style={{ fontSize: 10.5, color: theme.textFaint, marginBottom: 8, textTransform: 'lowercase', letterSpacing: '.04em' }}>sessions</div>
+              {selDayData.sessions?.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {selDayData.sessions.map((s, idx) => (
+                    <div key={s.id || idx} style={{ fontSize: 12.5, color: theme.textDim, padding: '4px 0' }}>
+                      {fmtClock(s.created_at)} · {s.duration_minutes} min focus
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: theme.textFaint, marginBottom: 6 }}>no sessions this day</div>
+              )}
+
+              <div style={{ fontSize: 12.5, color: theme.textDim, marginTop: 14 }}>
+                {selDayData.tasksCompleted > 0
+                  ? `${selDayData.tasksCompleted} task${selDayData.tasksCompleted === 1 ? '' : 's'} completed`
+                  : '0 tasks completed'}
               </div>
-            ))
+            </>
+          ) : (
+            <div style={{ fontSize: 12.5, color: theme.textFaint }}>no sessions this day</div>
           )}
-        </div>
-      )}
-
-      {!userId && (
-        <div style={{ fontSize: 11, color: theme.textFaint, lineHeight: 1.5 }}>
-          sign in to see your focus history on the calendar.
         </div>
       )}
     </div>
