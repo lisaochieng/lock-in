@@ -21,9 +21,12 @@ import Landing from './Landing';
 import * as auth from './lib/auth';
 import * as db from './lib/db';
 import * as sessions from './lib/sessions';
+import { joinRoom, getRoom, leaveRoom, roomInviteLink, isValidRoomId } from './lib/rooms';
 import './styles.css';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
+const PENDING_ROOM_KEY = 'lockin-pending-room';
+const CURRENT_ROOM_KEY = 'lockin-current-room';
 
 const starterTasks = [
   { id: crypto.randomUUID(), title: "review today's lecture notes", done: false },
@@ -122,7 +125,12 @@ function App() {
   const [timerToast, setTimerToast] = useState(false); // "focus session complete" notice
   const toastTimerRef = useRef(null);
 
-  const [roomName, setRoomName] = usePersistentState('lockin-room', roomFromUrl || 'exam-week');
+  const [currentRoom, setCurrentRoom] = useState(() => load(CURRENT_ROOM_KEY, null));
+  const setRoom = useCallback((room) => {
+    setCurrentRoom(room);
+    if (room?.id) localStorage.setItem(CURRENT_ROOM_KEY, JSON.stringify(room));
+    else localStorage.removeItem(CURRENT_ROOM_KEY);
+  }, []);
   const [activeVideo, setActiveVideo] = useState(spaces.find((s) => s.id === activeSpace)?.video);
   const [videoStart, setVideoStart] = useState(spaces.find((s) => s.id === activeSpace)?.startAt ?? 10);
   const [customVideoUrl, setCustomVideoUrl] = useState('');
@@ -157,6 +165,7 @@ function App() {
   useEffect(() => { sessionCountRef.current = sessionCount; }, [sessionCount]);
   const goalsReadyRef = useRef(false);
   const taskUpdateTimers = useRef({});
+  const roomAutoJoinRef = useRef(false);
 
   // ---- session stats from Supabase ----
   const refreshStats = useCallback(async (uid) => {
@@ -226,6 +235,50 @@ function App() {
     })();
     return () => { active = false; };
   }, [user?.id, refreshStats]);
+
+  useEffect(() => {
+    if (!user) roomAutoJoinRef.current = false;
+  }, [user]);
+
+  // ---- room invite: save pending id when signed out, auto-join after auth ----
+  useEffect(() => {
+    if (!authChecked) return undefined;
+
+    const pendingFromStorage = sessionStorage.getItem(PENDING_ROOM_KEY);
+    const inviteRoomId = roomFromUrl || pendingFromStorage;
+
+    if (!user?.id) {
+      if (inviteRoomId) {
+        sessionStorage.setItem(PENDING_ROOM_KEY, inviteRoomId);
+        setShowHero(true);
+      }
+      return undefined;
+    }
+
+    const joinInviteRoom = async (roomId) => {
+      if (!isValidRoomId(roomId)) return;
+      const { error } = await joinRoom(roomId, user.id);
+      if (error) return;
+      const details = await getRoom(roomId);
+      if (!details) return;
+      setRoom({ id: details.id, name: details.name });
+      sessionStorage.removeItem(PENDING_ROOM_KEY);
+      if (roomFromUrl) window.history.replaceState({}, '', window.location.pathname);
+    };
+
+    if (inviteRoomId && !roomAutoJoinRef.current) {
+      roomAutoJoinRef.current = true;
+      joinInviteRoom(inviteRoomId);
+      return undefined;
+    }
+
+    if (!inviteRoomId && currentRoom?.id && !roomAutoJoinRef.current) {
+      roomAutoJoinRef.current = true;
+      joinInviteRoom(currentRoom.id);
+    }
+
+    return undefined;
+  }, [authChecked, user?.id, roomFromUrl, currentRoom?.id, setRoom]);
 
   // ---- localStorage fallback writes (only while signed out) ----
   useEffect(() => { if (!user) localStorage.setItem('lockin-tasks', JSON.stringify(tasks)); }, [tasks, user]);
@@ -308,8 +361,12 @@ function App() {
       return sum + (stats.days[day.toISOString().slice(0, 10)] || 0);
     }, 0);
   }, [stats.days]);
-  const roomLink = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomName || 'study-room')}`;
-  const calendarUrl = calendarEventUrl(calendarProvider, roomName, roomLink, settings.focus);
+  const roomLink = currentRoom?.id ? roomInviteLink(currentRoom.id) : '';
+  const activeTaskTitle = useMemo(() => {
+    const task = tasks.find((t) => !t.done);
+    return task?.title ?? null;
+  }, [tasks]);
+  const calendarUrl = calendarEventUrl(calendarProvider, currentRoom?.name, roomLink, settings.focus);
 
   useEffect(() => { document.title = 'lock in'; }, []);
 
@@ -414,11 +471,13 @@ function App() {
 
   const handleSignOut = async () => {
     try {
+      if (currentRoom?.id && user?.id) await leaveRoom(currentRoom.id, user.id);
       const { error } = await auth.signOut();
       if (error) console.error('[auth] signOut error:', error);
     } catch (e) {
       console.error('[auth] signOut threw:', e);
     }
+    setRoom(null);
     setUser(null);
   };
 
@@ -533,7 +592,7 @@ function App() {
         <button className="glassbtn" onClick={() => setPanel('calendar')} title="calendar" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
           <CalendarDays size={18} />
         </button>
-        <button className="glassbtn" title="copy room link" onClick={() => navigator.clipboard?.writeText(roomLink)} style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
+        <button className="glassbtn" title="copy room link" onClick={() => roomLink && navigator.clipboard?.writeText(roomLink)} style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, opacity: roomLink ? 1 : 0.45 }} disabled={!roomLink}>
           <LinkIcon size={18} />
         </button>
       </div>
@@ -573,7 +632,15 @@ function App() {
       {widgetsOpen.tasks && <TasksWidget {...wProps('tasks')} tasks={tasks} setTasks={setTasks} />}
       {widgetsOpen.goals && <GoalsWidget {...wProps('goals')} settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />}
       {widgetsOpen.progress && <ProgressWidget {...wProps('progress')} stats={stats} weekMinutes={weekMinutes} tasks={tasks} settings={settings} />}
-      {widgetsOpen.room && <RoomWidget {...wProps('room')} roomName={roomName} setRoomName={setRoomName} roomLink={roomLink} user={user} />}
+      {widgetsOpen.room && (
+        <RoomWidget
+          {...wProps('room')}
+          user={user}
+          room={currentRoom}
+          onRoomChange={setRoom}
+          activeTaskTitle={activeTaskTitle}
+        />
+      )}
     </div>
   );
 }
