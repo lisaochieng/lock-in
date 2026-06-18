@@ -12,21 +12,51 @@ import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
 export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery, cat, setCat, categories, favorites = [], onToggleFavorite }) {
-  const list = useMemo(() => spaces.filter((s) => (
-    (cat === 'all' || s.category === cat)
-    && `${s.name} ${s.mood} ${s.category}`.toLowerCase().includes(query.toLowerCase())
-  )), [spaces, cat, query]);
+  const [favOnly, setFavOnly] = useState(false);
+
+  const q = query.trim().toLowerCase();
+  const list = useMemo(() => spaces.filter((s) => {
+    if (favOnly && !favorites.includes(s.id)) return false;
+    if (cat !== 'all' && s.category !== cat) return false;
+    const text = `${s.name} ${s.tags || ''} ${s.mood} ${s.category}`.toLowerCase();
+    return text.includes(q);
+  }), [spaces, favOnly, favorites, cat, q]);
+
+  const tabBtn = (isFav, label, icon) => {
+    const on = favOnly === isFav;
+    return (
+      <button
+        onClick={() => setFavOnly(isFav)}
+        style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          padding: '8px 0', borderRadius: 11, fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+          color: on ? theme.accentInk : theme.chipText,
+          background: on ? theme.accent : theme.chipBg,
+          border: `1px solid ${on ? 'transparent' : theme.chipBorder}`,
+        }}
+      >{icon}{label}</button>
+    );
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ position: 'relative', marginBottom: 14 }}>
+      {/* all / favorites filter tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {tabBtn(false, 'all spaces')}
+        {tabBtn(true, 'favorites', <Heart size={14} fill={favOnly ? theme.accentInk : 'none'} />)}
+      </div>
+
+      {/* search */}
+      <div style={{ position: 'relative', marginBottom: 12 }}>
         <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: theme.textFaint, display: 'flex' }}><Search size={15} /></span>
         <input
           value={query} placeholder="search spaces" onChange={(e) => setQuery(e.target.value)}
           style={{ width: '100%', background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 12, padding: '10px 12px 10px 34px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
         />
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+
+      {/* category chips */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14 }}>
         {categories.map((c) => (
           <button
             key={c} onClick={() => setCat(c)} className="chip"
@@ -34,34 +64,49 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
           >{c}</button>
         ))}
       </div>
-      <div className="scroll" style={{ display: 'flex', flexDirection: 'column', gap: 9, overflowY: 'auto', flex: 1, margin: '0 -4px', padding: '0 4px 4px' }}>
-        {list.length === 0
-          ? <div style={{ fontSize: 12.5, color: theme.textFaint, padding: '10px 2px' }}>no spaces match that.</div>
-          : list.map((s) => {
-            const active = s.id === activeId;
-            const fav = favorites.includes(s.id);
-            return (
-              <button
-                key={s.id} onClick={() => onSelect(s)} className="spacecard"
-                style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 9, borderRadius: 15, textAlign: 'left', width: '100%', background: active ? theme.chipBg : 'transparent', border: `1px solid ${active ? theme.panelBorder : 'transparent'}`, cursor: 'pointer' }}
-              >
-                <span style={{ width: 62, height: 48, borderRadius: 11, flexShrink: 0, background: `linear-gradient(160deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.18)), url(${s.image}) center/cover`, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)' }} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>{s.name}</span>
-                  <span style={{ display: 'block', fontSize: 11.5, color: theme.textFaint, marginTop: 2 }}>{s.mood} · {s.category}</span>
-                </span>
-                <span
-                  role="button" tabIndex={0} aria-label={fav ? 'remove from favorites' : 'add to favorites'} aria-pressed={fav}
-                  onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(s.id); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(s.id); } }}
-                  style={{ color: fav ? theme.accent : theme.textFaint, display: 'flex', cursor: 'pointer', padding: 2 }}
+
+      {/* tiles */}
+      <div className="scroll" style={{ flex: 1, overflowY: 'auto', margin: '0 -4px', padding: '0 4px 4px' }}>
+        {list.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: theme.textFaint, padding: '10px 2px' }}>
+            {favOnly ? 'no favorite spaces yet — tap a heart to add one.' : 'no spaces match that.'}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+            {list.map((s) => {
+              const active = s.id === activeId;
+              const fav = favorites.includes(s.id);
+              return (
+                <button
+                  key={s.id} onClick={() => onSelect(s)} className="spacetile"
+                  style={{
+                    position: 'relative', display: 'flex', flexDirection: 'column', textAlign: 'left',
+                    cursor: 'pointer', borderRadius: 14, overflow: 'hidden', background: theme.chipBg,
+                    border: `1.5px solid ${active ? theme.accent : theme.chipBorder}`,
+                  }}
                 >
-                  <Heart size={15} fill={fav ? theme.accent : 'none'} />
-                </span>
-                <span style={{ color: active ? theme.accent : theme.textFaint, display: 'flex' }}><ChevronRight size={15} /></span>
-              </button>
-            );
-          })}
+                  <span style={{ position: 'relative', width: '100%', paddingTop: '58%', background: `linear-gradient(160deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.34)), url(${s.image}) center/cover` }}>
+                    <span
+                      role="button" tabIndex={0} aria-label={fav ? 'remove from favorites' : 'add to favorites'} aria-pressed={fav}
+                      onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(s.id); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(s.id); } }}
+                      style={{ position: 'absolute', top: 7, right: 7, width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,14,18,0.42)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', color: fav ? theme.accent : '#fff', cursor: 'pointer' }}
+                    >
+                      <Heart size={14} fill={fav ? theme.accent : 'none'} />
+                    </span>
+                    {active && (
+                      <span style={{ position: 'absolute', left: 7, bottom: 7, fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 6, background: theme.accent, color: theme.accentInk }}>active</span>
+                    )}
+                  </span>
+                  <span style={{ padding: '8px 9px 10px' }}>
+                    <span style={{ display: 'block', fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{s.name}</span>
+                    <span style={{ display: 'block', fontSize: 10.5, color: theme.textFaint, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.tags}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

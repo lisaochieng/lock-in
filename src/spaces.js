@@ -6,6 +6,36 @@
 
 const unsplash = (id) => `https://images.unsplash.com/photo-${id}?w=800&h=450&fit=crop&q=90`;
 
+// Short "vibe" tags per category, e.g. "lo-fi · cozy".
+const VIBES = {
+  rain: 'rainy · calm',
+  forest: 'nature · fresh',
+  beach: 'waves · breezy',
+  cafe: 'lo-fi · cozy',
+  library: 'quiet · focused',
+  fireplace: 'warm · cozy',
+  'night city': 'neon · moody',
+  snow: 'icy · serene',
+  'japanese garden': 'zen · gentle',
+  underwater: 'aqua · dreamy',
+  rooftop: 'sunset · chill',
+  thunderstorm: 'stormy · deep',
+  waterfall: 'fresh · flowing',
+  desert: 'arid · vast',
+  mountains: 'alpine · crisp',
+  train: 'journey · rhythmic',
+  'airplane window': 'skybound · hushed',
+  'rice fields': 'verdant · still',
+  'cherry blossom': 'sakura · soft',
+  arctic: 'aurora · frozen',
+  savanna: 'wild · golden',
+  'lavender field': 'floral · mellow',
+  'morning fog': 'misty · quiet',
+  canal: 'old-world · gentle',
+  treehouse: 'leafy · snug',
+  'cozy bedroom': 'snug · sleepy',
+};
+
 export const spaces = [
   // rain — cool slate greys
   { id: 'rainy-library', name: 'rainy village', category: 'rain', mood: 'deep reading', video: '6ntUefWpN40', startAt: 30, image: unsplash('1493314894560-5c412a56c17c') },
@@ -119,7 +149,7 @@ export const spaces = [
   // cozy bedroom — warm amber
   { id: 'cozy-bedroom', name: 'cozy bedroom', category: 'cozy bedroom', mood: 'slow notes', video: '6z2NhKfpWFw', startAt: 30, image: unsplash('1586023492125-27b2c045efd7') },
   { id: 'rainy-bedroom', name: 'rainy bedroom', category: 'cozy bedroom', mood: 'late session', video: '0Y4lwRWDDGY', startAt: 30, image: unsplash('1522771739844-6a9f6d5f14af') },
-];
+].map((space) => ({ ...space, tags: VIBES[space.category] || space.category }));
 
 export const categories = ['all', ...new Set(spaces.map((item) => item.category))];
 
