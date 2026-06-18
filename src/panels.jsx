@@ -6,9 +6,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
-  Copy, LogOut, Users,
+  Copy, LogOut, Users, Flame, BarChart3,
 } from 'lucide-react';
-import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
+import { fetchSessionsByMonth, fetchCompletedTasksByMonth, fetchAllTimeStats, fetchSessionStats } from './lib/sessions';
+import { spaces } from './spaces';
 import {
   createRoom,
   joinRoom,
@@ -70,11 +71,11 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
       </div>
 
       {/* category chips */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14 }}>
+      <div className="scroll" style={{ display: 'flex', flexWrap: 'nowrap', gap: 7, marginBottom: 14, overflowX: 'auto', paddingBottom: 2 }}>
         {categories.map((c) => (
           <button
             key={c} onClick={() => setCat(c)} className="chip"
-            style={{ color: cat === c ? theme.accentInk : theme.chipText, background: cat === c ? theme.accent : theme.chipBg, border: `1px solid ${cat === c ? 'transparent' : theme.chipBorder}` }}
+            style={{ flexShrink: 0, color: cat === c ? theme.accentInk : theme.chipText, background: cat === c ? theme.accent : theme.chipBg, border: `1px solid ${cat === c ? 'transparent' : theme.chipBorder}` }}
           >{c}</button>
         ))}
       </div>
@@ -114,7 +115,7 @@ export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery
                   </span>
                   <span style={{ padding: '8px 9px 10px' }}>
                     <span style={{ display: 'block', fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{s.name}</span>
-                    <span style={{ display: 'block', fontSize: 10.5, color: theme.textFaint, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.tags}</span>
+                    <span className="scroll" style={{ display: 'block', fontSize: 10.5, color: theme.textFaint, marginTop: 2, whiteSpace: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>{s.tags}</span>
                   </span>
                 </button>
               );
@@ -637,6 +638,161 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
       </button>
 
       {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
+    </div>
+  );
+}
+
+const spaceById = Object.fromEntries(spaces.map((s) => [s.id, s]));
+
+const fmtSessionDate = (iso) =>
+  new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' }).toLowerCase();
+
+function Skeleton({ theme, style }) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        background: theme.chipBg,
+        border: `1px solid ${theme.chipBorder}`,
+        borderRadius: 10,
+        animation: 'pulse 1.4s ease-in-out infinite',
+        ...style,
+      }}
+    />
+  );
+}
+
+function ProgressSkeleton({ theme }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', gap: 9 }}>
+        {[0, 1, 2].map((i) => <Skeleton key={i} theme={theme} style={{ flex: 1, height: 72, borderRadius: 13 }} />)}
+      </div>
+      <Skeleton theme={theme} style={{ height: 14, width: '40%' }} />
+      <Skeleton theme={theme} style={{ height: 56, borderRadius: 8 }} />
+      <Skeleton theme={theme} style={{ height: 12, width: '55%' }} />
+      <Skeleton theme={theme} style={{ height: 44, borderRadius: 13 }} />
+      <Skeleton theme={theme} style={{ height: 44, borderRadius: 13 }} />
+      {[0, 1, 2].map((i) => <Skeleton key={`s${i}`} theme={theme} style={{ height: 36 }} />)}
+    </div>
+  );
+}
+
+export function ProgressPanel({ theme, userId, settings }) {
+  const [allTime, setAllTime] = useState(null);
+  const [weekly, setWeekly] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!userId) {
+      setAllTime(null);
+      setWeekly(null);
+      return undefined;
+    }
+    let active = true;
+    setLoading(true);
+    Promise.all([
+      fetchAllTimeStats(userId),
+      fetchSessionStats(userId),
+    ])
+      .then(([a, w]) => {
+        if (!active) return;
+        setAllTime(a);
+        setWeekly(w);
+        setLoading(false);
+      })
+      .catch(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [userId]);
+
+  const statCard = (icon, label, value) => (
+    <div style={{ flex: 1, textAlign: 'center', background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 13, padding: '13px 6px' }}>
+      <div style={{ color: theme.textDim, display: 'flex', justifyContent: 'center', marginBottom: 6 }}>{icon}</div>
+      <div style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 500, color: theme.text }}>{value}</div>
+      <div style={{ fontSize: 10, color: theme.textFaint, marginTop: 2 }}>{label}</div>
+    </div>
+  );
+
+  const insightRow = (label, value) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 12px', background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 13 }}>
+      <span style={{ fontSize: 12.5, color: theme.textDim }}>{label}</span>
+      <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+
+  if (!userId) {
+    return (
+      <div style={{ fontSize: 12.5, color: theme.textDim, lineHeight: 1.55 }}>
+        sign in to see your all-time focus stats, streaks, and session history.
+      </div>
+    );
+  }
+
+  if (loading || !allTime || !weekly) {
+    return <ProgressSkeleton theme={theme} />;
+  }
+
+  const dailyGoal = settings?.dailyGoal || 120;
+  const breakdown = weekly.weeklyBreakdown || [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: 420, overflowY: 'auto' }} className="scroll">
+      <div style={{ display: 'flex', gap: 9 }}>
+        {statCard(<Clock size={15} />, 'focus time', `${allTime.totalHours}h`)}
+        {statCard(<Flame size={15} />, 'streak', `${allTime.streak}d`)}
+        {statCard(<Check size={15} />, 'tasks done', allTime.tasksCompleted)}
+      </div>
+
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 9 }}>
+          <span style={{ fontSize: 10.5, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>this week</span>
+          <span style={{ fontSize: 11.5, color: theme.textDim }}>{weekly.weeklyMinutes} min total</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 56 }}>
+          {breakdown.map((day, index) => {
+            const h = Math.max(8, Math.min(100, (day.minutes / dailyGoal) * 100));
+            const isToday = index === breakdown.length - 1;
+            return (
+              <div
+                key={day.day}
+                title={`${day.day}: ${day.minutes} min`}
+                style={{ flex: 1, height: `${h}%`, background: isToday ? theme.accent : theme.trackBg, borderRadius: 5, transition: 'height .4s ease' }}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {insightRow('best session', allTime.bestSessionMinutes > 0 ? `${allTime.bestSessionMinutes} min` : '—')}
+      {insightRow('most productive day', allTime.mostProductiveDay || '—')}
+
+      <div>
+        <div style={{ fontSize: 10.5, color: theme.textFaint, marginBottom: 8, textTransform: 'lowercase', letterSpacing: '.04em' }}>
+          recent sessions
+        </div>
+        {allTime.recentSessions.length === 0 ? (
+          <div style={{ fontSize: 12, color: theme.textFaint }}>no sessions logged yet.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {allTime.recentSessions.map((s, i) => {
+              const space = s.space_id ? spaceById[s.space_id] : null;
+              return (
+                <div
+                  key={s.id || i}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 4px', borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}
+                >
+                  <span style={{ color: theme.textFaint, display: 'flex' }}><BarChart3 size={13} /></span>
+                  <span style={{ flex: 1, fontSize: 12.5, color: theme.text }}>{fmtSessionDate(s.created_at)}</span>
+                  <span style={{ fontSize: 11.5, color: theme.textDim }}>{s.duration_minutes}m</span>
+                  <span style={{ fontSize: 11, color: theme.textFaint, maxWidth: 88, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }}>
+                    {space?.name || 'no space'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

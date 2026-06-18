@@ -41,15 +41,41 @@ const minutesByDayFrom = (rows) => {
   return map;
 };
 
-// Consecutive days (ending today) that have > 0 focus minutes.
-const streakFrom = (minutesByDay) => {
+// Consecutive days (ending today) that have at least one focus session.
+const streakFromSessions = (rows) => {
+  const daysWithSession = {};
+  for (const row of rows) {
+    daysWithSession[dayKey(row.created_at)] = true;
+  }
   let streak = 0;
   const cursor = startOfToday();
-  while ((minutesByDay[dayKey(cursor)] || 0) > 0) {
+  while (daysWithSession[dayKey(cursor)]) {
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
   return streak;
+};
+
+// Weekday with the highest average focus minutes per session.
+const mostProductiveWeekday = (rows) => {
+  const minutesByWeekday = [0, 0, 0, 0, 0, 0, 0];
+  const countByWeekday = [0, 0, 0, 0, 0, 0, 0];
+  for (const row of rows) {
+    const wd = new Date(row.created_at).getDay();
+    minutesByWeekday[wd] += row.duration_minutes || 0;
+    countByWeekday[wd] += 1;
+  }
+  let bestIdx = -1;
+  let bestAvg = 0;
+  for (let i = 0; i < 7; i += 1) {
+    if (countByWeekday[i] === 0) continue;
+    const avg = minutesByWeekday[i] / countByWeekday[i];
+    if (avg > bestAvg) {
+      bestAvg = avg;
+      bestIdx = i;
+    }
+  }
+  return bestIdx >= 0 ? WEEKDAYS[bestIdx] : null;
 };
 
 /**
@@ -120,30 +146,34 @@ export async function fetchSessionStats(userId) {
     weeklyBreakdown.push({ day: WEEKDAYS[d.getDay()], minutes });
   }
 
-  return { todayMinutes, weeklyMinutes, streak: streakFrom(minutesByDay), weeklyBreakdown };
+  return { todayMinutes, weeklyMinutes, streak: streakFromSessions(rows), weeklyBreakdown };
 }
 
 /**
  * Lifetime stats.
  * Returns:
  *   {
+ *     totalMinutes,
  *     totalHours,           // focus hours, 1 decimal
- *     streak,               // current daily streak
+ *     streak,               // current daily streak (days with ≥1 session)
  *     tasksCompleted,       // count of completed tasks
  *     bestSessionMinutes,   // longest single focus session
- *     mostProductiveDay     // weekday name with the most total minutes (or null)
+ *     mostProductiveDay,    // weekday with highest avg session length
+ *     recentSessions,       // last 10 focus sessions, newest first
  *   }
  */
 export async function fetchAllTimeStats(userId) {
   const empty = {
+    totalMinutes: 0,
     totalHours: 0,
     streak: 0,
     tasksCompleted: 0,
     bestSessionMinutes: 0,
     mostProductiveDay: null,
+    recentSessions: [],
   };
 
-  const [sessionRes, taskRes] = await Promise.all([
+  const [sessionRes, taskRes, recentRes] = await Promise.all([
     supabase
       .from('sessions')
       .select('duration_minutes, created_at')
@@ -154,6 +184,13 @@ export async function fetchAllTimeStats(userId) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('completed', true),
+    supabase
+      .from('sessions')
+      .select('id, duration_minutes, space_id, created_at')
+      .eq('user_id', userId)
+      .eq('session_type', 'focus')
+      .order('created_at', { ascending: false })
+      .limit(10),
   ]);
 
   if (sessionRes.error) {
@@ -163,34 +200,28 @@ export async function fetchAllTimeStats(userId) {
   if (taskRes.error) {
     console.error('[sessions] fetchAllTimeStats tasks error:', taskRes.error);
   }
+  if (recentRes.error) {
+    console.error('[sessions] fetchAllTimeStats recent error:', recentRes.error);
+  }
 
   const rows = sessionRes.data ?? [];
 
   let totalMinutes = 0;
   let bestSessionMinutes = 0;
-  const minutesByWeekday = [0, 0, 0, 0, 0, 0, 0];
   for (const row of rows) {
     const minutes = row.duration_minutes || 0;
     totalMinutes += minutes;
     if (minutes > bestSessionMinutes) bestSessionMinutes = minutes;
-    minutesByWeekday[new Date(row.created_at).getDay()] += minutes;
-  }
-
-  let mostProductiveDay = null;
-  if (rows.length > 0) {
-    let bestIdx = 0;
-    for (let i = 1; i < minutesByWeekday.length; i += 1) {
-      if (minutesByWeekday[i] > minutesByWeekday[bestIdx]) bestIdx = i;
-    }
-    if (minutesByWeekday[bestIdx] > 0) mostProductiveDay = WEEKDAYS[bestIdx];
   }
 
   return {
+    totalMinutes,
     totalHours: Math.round((totalMinutes / 60) * 10) / 10,
-    streak: streakFrom(minutesByDayFrom(rows)),
+    streak: streakFromSessions(rows),
     tasksCompleted: taskRes.count ?? 0,
     bestSessionMinutes,
-    mostProductiveDay,
+    mostProductiveDay: mostProductiveWeekday(rows),
+    recentSessions: recentRes.data ?? [],
   };
 }
 

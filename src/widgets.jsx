@@ -4,11 +4,12 @@
    Visual design ported from claude.ai/design; data wiring keeps
    the app's persisted timer, stats, tasks and room features.
    =========================================================== */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Timer, ListTodo, Target, BarChart3, Users, Play, Pause, RotateCcw,
-  Plus, Trash2, Check, GripVertical, X, Flame, Clock,
+  Plus, Trash2, Check, GripVertical, X,
 } from 'lucide-react';
+import { ProgressPanel, RoomPanel } from './panels';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
@@ -220,42 +221,15 @@ export function GoalsWidget(props) {
 
 /* ------- Progress ------- */
 export function ProgressWidget(props) {
-  const { theme, stats, weekMinutes, tasks, settings } = props;
-  const done = tasks.filter((t) => t.done).length;
-  const pctTasks = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-  const stat = (icon, label, value) => (
-    <div key={label} style={{ flex: 1, textAlign: 'center', background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 13, padding: '13px 6px' }}>
-      <div style={{ color: theme.textDim, display: 'flex', justifyContent: 'center', marginBottom: 6 }}>{icon}</div>
-      <div style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 500 }}>{value}</div>
-      <div style={{ fontSize: 10, color: theme.textFaint, marginTop: 2 }}>{label}</div>
-    </div>
-  );
+  const { theme, user, settings } = props;
   return (
     <Widget {...props} title="progress" icon={<BarChart3 size={15} />} width={320}>
-      <div style={{ display: 'flex', gap: 9, marginBottom: 16 }}>
-        {stat(<Clock size={15} />, 'focused', `${stats.totalMinutes}m`)}
-        {stat(<Flame size={15} />, 'streak', stats.streak)}
-        {stat(<Check size={15} />, 'tasks', `${pctTasks}%`)}
-      </div>
-      <div style={{ fontSize: 10.5, color: theme.textFaint, marginBottom: 9, textTransform: 'lowercase', letterSpacing: '.04em' }}>this week</div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 56 }}>
-        {Array.from({ length: 7 }).map((_, index) => {
-          const day = new Date();
-          day.setDate(day.getDate() - (6 - index));
-          const key = day.toISOString().slice(0, 10);
-          const minutes = stats.days[key] || 0;
-          const h = Math.max(8, Math.min(100, (minutes / settings.dailyGoal) * 100));
-          return <div key={key} style={{ flex: 1, height: `${h}%`, background: index === 6 ? theme.accent : theme.trackBg, borderRadius: 5 }} />;
-        })}
-      </div>
-      <div style={{ fontSize: 11, color: theme.textFaint, marginTop: 10 }}>{weekMinutes} minutes this week</div>
+      <ProgressPanel theme={theme} userId={user?.id} settings={settings} />
     </Widget>
   );
 }
 
 /* ------- Room ------- */
-import { RoomPanel } from './panels';
-
 export function RoomWidget(props) {
   const { theme, user, room, onRoomChange, activeTaskTitle } = props;
   return (
