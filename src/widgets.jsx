@@ -4,14 +4,30 @@
    Visual design ported from claude.ai/design; data wiring keeps
    the app's persisted timer, stats, tasks and room features.
    =========================================================== */
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import {
   Timer, ListTodo, Target, BarChart3, Users, Play, Pause, RotateCcw,
   Plus, Trash2, Check, GripVertical, X, Minus,
 } from 'lucide-react';
-import { ProgressPanel, RoomPanel } from './panels';
+
+const ProgressPanel = lazy(() => import('./panels').then((m) => ({ default: m.ProgressPanel })));
+const RoomPanel = lazy(() => import('./panels').then((m) => ({ default: m.RoomPanel })));
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
+
+function WidgetPanelSkeleton() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        borderRadius: 12,
+        background: 'rgba(10,14,18,0.55)',
+        minHeight: 120,
+        width: '100%',
+      }}
+    />
+  );
+}
 
 function panelStyle(theme) {
   return {
@@ -255,14 +271,16 @@ export function ProgressWidget(props) {
   const { theme, user, settings, tasks, todayMinutes, stats } = props;
   return (
     <Widget {...props} title="progress" icon={<BarChart3 size={15} />} width={320}>
-      <ProgressPanel
-        theme={theme}
-        userId={user?.id}
-        settings={settings}
-        tasks={tasks}
-        todayMinutes={todayMinutes}
-        stats={stats}
-      />
+      <Suspense fallback={<WidgetPanelSkeleton />}>
+        <ProgressPanel
+          theme={theme}
+          userId={user?.id}
+          settings={settings}
+          tasks={tasks}
+          todayMinutes={todayMinutes}
+          stats={stats}
+        />
+      </Suspense>
     </Widget>
   );
 }
@@ -272,13 +290,15 @@ export function RoomWidget(props) {
   const { theme, user, room, onRoomChange, activeTaskTitle } = props;
   return (
     <Widget {...props} title="room" icon={<Users size={15} />} width={300}>
-      <RoomPanel
-        theme={theme}
-        user={user}
-        room={room}
-        onRoomChange={onRoomChange}
-        activeTaskTitle={activeTaskTitle}
-      />
+      <Suspense fallback={<WidgetPanelSkeleton />}>
+        <RoomPanel
+          theme={theme}
+          user={user}
+          room={room}
+          onRoomChange={onRoomChange}
+          activeTaskTitle={activeTaskTitle}
+        />
+      </Suspense>
     </Widget>
   );
 }

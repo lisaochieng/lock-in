@@ -39,11 +39,10 @@ export function buildYouTubeEmbedUrl(rawInput, options = {}) {
   const videoId = extractVideoId(rawInput);
   if (!videoId) return '';
 
-  const { start = 0 } = options;
+  const { start = 0, muted = false } = options;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const params = new URLSearchParams({
     autoplay: '1',
-    mute: '1',
     loop: '1',
     controls: '0',
     disablekb: '1',
@@ -57,7 +56,28 @@ export function buildYouTubeEmbedUrl(rawInput, options = {}) {
     start: String(Math.max(0, Number(start) || 0)),
     playlist: videoId,
   });
+  if (muted) params.set('mute', '1');
   if (origin) params.set('origin', origin);
 
-  return `https://www.youtube.com/embed/${videoId}?${params}`;
+  return `https://www.youtube-nocookie.com/embed/${videoId}?${params}`;
+}
+
+/** Send a command to a YouTube iframe player (requires enablejsapi=1). */
+export function postYouTubeCommand(iframeEl, func, args = []) {
+  try {
+    iframeEl?.contentWindow?.postMessage(JSON.stringify({
+      event: 'command',
+      func,
+      args,
+    }), '*');
+  } catch {
+    /* ignore cross-origin errors */
+  }
+}
+
+/** Apply volume / mute state to the embedded player. */
+export function applyYouTubeVolume(iframeEl, volume, muted) {
+  if (!iframeEl) return;
+  postYouTubeCommand(iframeEl, muted ? 'mute' : 'unMute', []);
+  postYouTubeCommand(iframeEl, 'setVolume', [muted ? 0 : volume]);
 }

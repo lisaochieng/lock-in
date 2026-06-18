@@ -3,10 +3,11 @@
    Glass styling from claude.ai/design; keeps the app's auth and
    calendar deep-link features.
    =========================================================== */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
+  Volume2, VolumeX,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
 import { fetchProgressAnalysis, emptyProgressAnalysis, fetchUserProfileStats, formatMemberSince } from './lib/progress';
@@ -27,7 +28,7 @@ import {
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
-export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat, setCat, categories, favorites = [], onToggleFavorite }) {
+function SpacesPanelImpl({ theme, spaces: allSpaces, activeId, onSelect, cat, setCat, categories, favorites = [], onToggleFavorite }) {
   const [favOnly, setFavOnly] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -150,17 +151,28 @@ export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat,
                     border: `1.5px solid ${active ? theme.accent : theme.chipBorder}`,
                   }}
                 >
-                  <span style={{ position: 'relative', width: '100%', paddingTop: '58%', background: `linear-gradient(160deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.34)), url(${s.image}) center/cover` }}>
+                  <span style={{ position: 'relative', display: 'block', width: '100%', paddingTop: '58%', overflow: 'hidden' }}>
+                    <img
+                      src={s.image}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <span
+                      aria-hidden
+                      style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.34))', pointerEvents: 'none' }}
+                    />
                     <span
                       role="button" tabIndex={0} aria-label={fav ? 'remove from favorites' : 'add to favorites'} aria-pressed={fav}
                       onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(s.id); }}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(s.id); } }}
-                      style={{ position: 'absolute', top: 7, right: 7, width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,14,18,0.42)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', color: fav ? theme.accent : '#fff', cursor: 'pointer' }}
+                      style={{ position: 'absolute', top: 7, right: 7, width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,14,18,0.42)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', color: fav ? theme.accent : '#fff', cursor: 'pointer', zIndex: 1 }}
                     >
                       <Heart size={14} fill={fav ? theme.accent : 'none'} />
                     </span>
                     {active && (
-                      <span style={{ position: 'absolute', left: 7, bottom: 7, fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 6, background: theme.accent, color: theme.accentInk }}>active</span>
+                      <span style={{ position: 'absolute', left: 7, bottom: 7, fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 6, background: theme.accent, color: theme.accentInk, zIndex: 1 }}>active</span>
                     )}
                   </span>
                   <span style={{ padding: '8px 9px 10px' }}>
@@ -177,7 +189,7 @@ export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat,
   );
 }
 
-export function ProfilePanel({ theme, user, onSignOut, onShowHero }) {
+function ProfilePanelImpl({ theme, user, onSignOut, onShowHero }) {
   const [profileStats, setProfileStats] = useState(null);
 
   useEffect(() => {
@@ -266,7 +278,7 @@ const fmtClock = (iso) =>
 
 const sessionLabel = { focus: 'focus', shortBreak: 'short break', longBreak: 'long break' };
 
-export function CalendarPanel({ theme, userId }) {
+function CalendarPanelImpl({ theme, userId }) {
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [sessionsByDay, setSessionsByDay] = useState({});
@@ -458,7 +470,7 @@ const memberInitials = (member, userId) => {
   return name[0]?.toUpperCase() || '?';
 };
 
-export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = null }) {
+function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null }) {
   const [members, setMembers] = useState([]);
   const [joinInput, setJoinInput] = useState('');
   const [view, setView] = useState('idle'); // idle | creating
@@ -591,10 +603,6 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
     onRoomChange({ id: details.id, name: details.name });
   };
 
-  const handleLeave = () => {
-    onRoomChange(null);
-  };
-
   const copyInvite = () => {
     if (!inviteLink) return;
     navigator.clipboard?.writeText(inviteLink);
@@ -671,7 +679,7 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
           className="bigbtn"
           style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk, border: 'none' }}
         >
-          <Users size={16} /> create a room
+          create a room
         </button>
 
         <div>
@@ -706,10 +714,6 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: theme.text, lineHeight: 1.2 }}>
-        {room.name}
-      </div>
-
       <div style={{ fontSize: 11, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>
         members · {sortedMembers.length}
       </div>
@@ -763,16 +767,60 @@ export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = n
         {inviteLink}
       </div>
 
+      {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
+    </div>
+  );
+}
+
+export function RoomTopBar({ theme, room, onLeave }) {
+  return (
+    <div
+      className="roomtopbar"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 12px 8px 14px',
+        borderRadius: 15,
+        background: theme.panelBg,
+        border: `1px solid ${theme.panelBorder}`,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        minWidth: 0,
+        maxWidth: 280,
+      }}
+    >
+      <span style={{ display: 'flex', color: theme.accent, flexShrink: 0 }}><Users size={18} /></span>
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontFamily: SERIF,
+          fontSize: 15,
+          fontWeight: 600,
+          color: theme.text,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {room.name}
+      </span>
       <button
         type="button"
-        onClick={handleLeave}
-        className="ghostbtn"
-        style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
+        onClick={onLeave}
+        className="ghostbtn sm"
+        style={{
+          flexShrink: 0,
+          color: theme.textDim,
+          background: theme.chipBg,
+          border: `1px solid ${theme.chipBorder}`,
+          padding: '6px 10px',
+          fontSize: 12,
+        }}
       >
-        <LogOut size={15} /> leave room
+        <LogOut size={14} /> leave
       </button>
-
-      {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
     </div>
   );
 }
@@ -837,7 +885,7 @@ function ProgressSkeleton({ theme }) {
   );
 }
 
-export function ProgressPanel({ theme, userId, settings, tasks = [], todayMinutes = 0, stats = null }) {
+function ProgressPanelImpl({ theme, userId, settings, tasks = [], todayMinutes = 0, stats = null }) {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [chartTip, setChartTip] = useState(null);
@@ -1048,3 +1096,143 @@ export function ProgressPanel({ theme, userId, settings, tasks = [], todayMinute
     </div>
   );
 }
+
+const YT_VOLUME_KEY = 'yt_volume';
+const YT_SOUND_KEY = 'yt_sound_enabled';
+
+export function loadYtVolume() {
+  const v = Number(localStorage.getItem(YT_VOLUME_KEY));
+  return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : 80;
+}
+
+export function saveYtVolume(value) {
+  localStorage.setItem(YT_VOLUME_KEY, String(Math.min(100, Math.max(0, value))));
+}
+
+export function loadYtSoundEnabled() {
+  return localStorage.getItem(YT_SOUND_KEY) === '1';
+}
+
+export function saveYtSoundEnabled() {
+  localStorage.setItem(YT_SOUND_KEY, '1');
+}
+
+export function SoundEnablePill({ theme, onEnable }) {
+  return (
+    <button
+      type="button"
+      className="soundpill"
+      onClick={onEnable}
+      style={{
+        position: 'fixed',
+        left: 96,
+        bottom: 28,
+        zIndex: 20,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '10px 16px',
+        borderRadius: 999,
+        border: `1px solid ${theme.panelBorder}`,
+        background: theme.panelBg,
+        color: theme.text,
+        fontSize: 12.5,
+        fontFamily: 'inherit',
+        fontWeight: 500,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        boxShadow: '0 12px 32px -16px rgba(0,0,0,0.55)',
+        cursor: 'pointer',
+      }}
+    >
+      <Volume2 size={15} style={{ color: theme.accent }} />
+      click to enable sound
+    </button>
+  );
+}
+
+export function VolumeRailWidget({ theme, volume, onVolumeChange, muted, onToggleMute }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
+  return (
+    <div
+      ref={wrapRef}
+      className="railvolume"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {open && (
+        <div
+          className="railvolume-pop"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: 'calc(100% + 8px)',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+            padding: '12px 10px',
+            borderRadius: 14,
+            background: theme.panelBg,
+            border: `1px solid ${theme.panelBorder}`,
+            boxShadow: '0 16px 40px -20px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            zIndex: 60,
+          }}
+        >
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volume}
+            aria-label="ambience volume"
+            className="railvolume-slider"
+            onChange={(e) => onVolumeChange(Number(e.target.value))}
+          />
+          <span style={{ fontSize: 9.5, color: theme.textFaint, fontVariantNumeric: 'tabular-nums' }}>{volume}</span>
+        </div>
+      )}
+      <button
+        type="button"
+        className="railbtn"
+        title={muted ? 'unmute ambience' : 'mute ambience'}
+        aria-label={muted ? 'unmute ambience' : 'mute ambience'}
+        onClick={() => {
+          setOpen(true);
+          onToggleMute();
+        }}
+        style={{ color: muted ? theme.textFaint : theme.textDim }}
+      >
+        <span
+          className="railicon"
+          style={{
+            background: open ? theme.chipBg : 'transparent',
+            boxShadow: open ? `inset 0 0 0 1px ${theme.panelBorder}` : 'none',
+          }}
+        >
+          {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </span>
+        <span className="raillabel">volume</span>
+      </button>
+    </div>
+  );
+}
+
+export const SpacesPanel = memo(SpacesPanelImpl);
+export const ProfilePanel = memo(ProfilePanelImpl);
+export const CalendarPanel = memo(CalendarPanelImpl);
+export const RoomPanel = memo(RoomPanelImpl);
+export const ProgressPanel = memo(ProgressPanelImpl);
