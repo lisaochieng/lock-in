@@ -64,7 +64,7 @@ a { color: inherit; text-decoration: none; }
    study space — rail
    =========================================================== */
 .rail {
-  position: fixed; left: 0; top: 0; bottom: 0; width: 80px; z-index: 50;
+  position: fixed; left: 0; top: 0; bottom: 0; width: 80px; z-index: 500;
   display: flex; flex-direction: column; align-items: center; padding: 18px 0 16px;
   backdrop-filter: blur(20px) saturate(1.2); -webkit-backdrop-filter: blur(20px) saturate(1.2);
   transition: background .9s ease, border-color .9s ease;
@@ -127,7 +127,7 @@ a { color: inherit; text-decoration: none; }
 
 /* flyout */
 .flyout {
-  position: fixed; left: 96px; top: 18px; bottom: 18px; width: 312px; z-index: 46; border-radius: 24px;
+  position: fixed; left: 96px; top: 18px; bottom: 18px; width: 312px; z-index: 500; border-radius: 24px;
   padding: 20px; display: flex; flex-direction: column;
   backdrop-filter: blur(26px) saturate(1.25); -webkit-backdrop-filter: blur(26px) saturate(1.25);
   box-shadow: 0 30px 80px -34px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.10);
@@ -135,7 +135,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* top-right controls */
-.topctl { position: fixed; top: 20px; right: 26px; z-index: 50; display: flex; align-items: center; gap: 10px; }
+.topctl { position: fixed; top: 20px; right: 26px; z-index: 500; display: flex; align-items: center; gap: 10px; }
 .glassbtn { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transition: transform .15s ease; }
 .glassbtn:hover { transform: translateY(-1px); }
 
@@ -175,7 +175,7 @@ a { color: inherit; text-decoration: none; }
   border: none;
 }
 
-.ytbar { position: fixed; bottom: 24px; right: 26px; z-index: 42; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; border-radius: 15px; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.ytbar { position: fixed; bottom: 24px; right: 26px; z-index: 1000; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; border-radius: 15px; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
 
 /* buttons */
 .primarybtn { display: flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 12px; padding: 11px 16px; font-size: 14px; font-weight: 600; transition: filter .15s ease, transform .15s ease; }

@@ -47,26 +47,40 @@ const defaultWidgetsOpen = { timer: true, tasks: true, goals: false, progress: f
 
 const WIDGET_LAYOUT_KEY = 'lockin_widget_layout';
 const WIDGET_IDS = ['timer', 'tasks', 'goals', 'progress', 'room', 'sound'];
+const AMBIENCE_BAR_HEIGHT = 70;
+const WIDGET_Z_BASE = 100;
+const WIDGET_Z_DRAG = 200;
 
 const clampWidgetPos = (x, y) => {
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const H = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const maxY = Math.min(H - 300, H - AMBIENCE_BAR_HEIGHT - 50);
   return {
     x: Math.min(Math.max(80, x), W - 320),
-    y: Math.min(Math.max(100, y), H - 200),
+    y: Math.min(Math.max(100, y), maxY),
   };
 };
 
 const defaultWidgetLayout = () => {
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  const H = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const y = (val) => Math.min(val, H - 300);
+  const x = (val) => Math.min(val, W - 320);
   return {
-    timer: clampWidgetPos(80, 120),
-    tasks: clampWidgetPos(W - 380, 120),
-    goals: clampWidgetPos(80, 420),
-    progress: clampWidgetPos(W - 380, 380),
-    room: clampWidgetPos(Math.floor(W / 2) - 160, 420),
-    sound: clampWidgetPos(80, 680),
+    timer: clampWidgetPos(x(W - 760), y(120)),
+    tasks: clampWidgetPos(x(W - 380), y(120)),
+    goals: clampWidgetPos(x(W - 760), y(420)),
+    progress: clampWidgetPos(x(W - 380), y(120)),
+    room: clampWidgetPos(x(W - 380), y(120)),
+    sound: clampWidgetPos(x(80), y(120)),
+    calendar: clampWidgetPos(x(80), y(120)),
   };
+};
+
+const isWidgetPosValid = (pos) => {
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return false;
+  const clamped = clampWidgetPos(pos.x, pos.y);
+  return clamped.x === pos.x && clamped.y === pos.y;
 };
 
 const loadWidgetLayout = () => {
@@ -78,8 +92,8 @@ const loadWidgetLayout = () => {
       const layout = {};
       for (const id of WIDGET_IDS) {
         const p = parsed[id];
-        layout[id] = p && Number.isFinite(p.x) && Number.isFinite(p.y)
-          ? clampWidgetPos(p.x, p.y)
+        layout[id] = p && Number.isFinite(p.x) && Number.isFinite(p.y) && isWidgetPosValid(p)
+          ? p
           : defaults[id];
       }
       return layout;
@@ -182,6 +196,20 @@ function App() {
   const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', defaultWidgetsOpen);
   const [widgetLayout, setWidgetLayout] = useState(() => loadWidgetLayout());
 
+  useEffect(() => {
+    WIDGET_IDS.forEach((id) => {
+      if (widgetsOpen[id] && !isWidgetPosValid(widgetLayout[id])) {
+        const defaults = defaultWidgetLayout();
+        setWidgetLayout((prev) => {
+          const next = { ...prev, [id]: defaults[id] };
+          localStorage.setItem(WIDGET_LAYOUT_KEY, JSON.stringify(next));
+          return next;
+        });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount for persisted open widgets
+  }, []);
+
   const [mode, setMode] = useState('focus');
   const [secondsLeft, setSecondsLeft] = useState(settings.focus * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -206,10 +234,8 @@ function App() {
 
   const completionHandled = useRef(false);
 
-  // widget z-stacking
-  const [zMap, setZMap] = useState({});
-  const zTop = useRef(50);
-  const raise = (k) => { zTop.current += 1; setZMap((m) => ({ ...m, [k]: zTop.current })); };
+  // widget drag z-index (100 base, 200 while dragging)
+  const [draggingWidget, setDraggingWidget] = useState(null);
 
   // rotating quote, themed to the active space's vibe
   const [qi, setQi] = useState(0);
@@ -618,10 +644,24 @@ function App() {
   };
 
   const navWidgetIds = ['timer', 'tasks', 'goals', 'progress', 'sound'];
-  const toggleWidget = (k) => { setWidgetsOpen((o) => ({ ...o, [k]: !o[k] })); if (!widgetsOpen[k]) raise(k); };
+  const ensureWidgetPos = useCallback((id) => {
+    setWidgetLayout((prev) => {
+      if (isWidgetPosValid(prev[id])) return prev;
+      const defaults = defaultWidgetLayout();
+      const next = { ...prev, [id]: defaults[id] };
+      localStorage.setItem(WIDGET_LAYOUT_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const toggleWidget = (k) => {
+    const opening = !widgetsOpen[k];
+    setWidgetsOpen((o) => ({ ...o, [k]: !o[k] }));
+    if (opening) ensureWidgetPos(k);
+  };
   const showAllWidgets = () => {
     setWidgetsOpen((o) => ({ ...o, ...Object.fromEntries(navWidgetIds.map((id) => [id, true])) }));
-    navWidgetIds.forEach((id) => raise(id));
+    navWidgetIds.forEach((id) => ensureWidgetPos(id));
   };
   const hideAllWidgets = () => {
     setWidgetsOpen((o) => ({ ...o, ...Object.fromEntries(navWidgetIds.map((id) => [id, false])) }));
@@ -673,8 +713,9 @@ function App() {
     onClose: () => setWidgetsOpen((o) => ({ ...o, [k]: false })),
     pos: widgetLayout[k],
     onPosChange: (p) => setWidgetPos(k, p),
-    z: zMap[k] || 40,
-    onFocusZ: () => raise(k),
+    z: draggingWidget === k ? WIDGET_Z_DRAG : WIDGET_Z_BASE,
+    onDragStart: () => setDraggingWidget(k),
+    onDragEnd: () => setDraggingWidget((w) => (w === k ? null : w)),
   });
 
   // ---- routing: signed-in (or guest / room link) -> app, otherwise the hero ----

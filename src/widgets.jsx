@@ -42,11 +42,18 @@ function panelStyle(theme) {
 }
 
 /* draggable shell */
-function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, width = 300, z, onFocusZ, children }) {
-  const clampPos = (x, y) => ({
-    x: Math.max(80, Math.min(window.innerWidth - 320, x)),
-    y: Math.max(100, Math.min(window.innerHeight - 200, y)),
-  });
+const AMBIENCE_BAR_HEIGHT = 70;
+
+function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, onDragStart, onDragEnd, width = 300, z = 100, children }) {
+  const clampPos = (x, y) => {
+    const maxY = window.innerHeight - AMBIENCE_BAR_HEIGHT - 50;
+    const H = window.innerHeight;
+    const W = window.innerWidth;
+    return {
+      x: Math.min(Math.max(80, x), W - 320),
+      y: Math.min(Math.max(100, y), Math.min(H - 300, maxY)),
+    };
+  };
 
   const fallback = clampPos((init || { x: 120, y: 140 }).x, (init || { x: 120, y: 140 }).y);
   const [localPos, setLocalPos] = useState(fallback);
@@ -59,7 +66,7 @@ function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, 
   };
 
   const startDrag = (e) => {
-    if (onFocusZ) onFocusZ();
+    if (onDragStart) onDragStart();
     const sx = e.clientX;
     const sy = e.clientY;
     const ox = pos.x;
@@ -68,6 +75,7 @@ function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, 
       commitPos({ x: ox + ev.clientX - sx, y: oy + ev.clientY - sy });
     };
     const up = () => {
+      if (onDragEnd) onDragEnd();
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
@@ -77,8 +85,7 @@ function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, 
 
   return (
     <div
-      onPointerDown={onFocusZ}
-      style={{ position: 'fixed', left: pos.x, top: pos.y, width, zIndex: z || 40, animation: 'widgetIn .34s cubic-bezier(.2,.8,.2,1)', ...panelStyle(theme) }}
+      style={{ position: 'fixed', left: pos.x, top: pos.y, width, zIndex: z, animation: 'widgetIn .34s cubic-bezier(.2,.8,.2,1)', ...panelStyle(theme) }}
     >
       <div
         onPointerDown={startDrag}
