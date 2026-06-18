@@ -4,9 +4,13 @@
    Pure data layer (no UI). Built on the shared Supabase client.
 
    Schema reference:
-     public.rooms        (id, name, created_by, created_at, is_active)
+     public.rooms        (id, name, created_by, host_id, created_at, is_active,
+                          current_space_id, timer_state)
      public.room_members (id, room_id, user_id, joined_at, last_seen_at)
      public.profiles     (id, name, avatar_url)   -- see migration 0003
+
+   Host controls (migration 0008): only host_id may update room state;
+   members read via RLS. Realtime on rooms powers subscribeToRoomState().
 
    Member display names/avatars come from `public.profiles`. If that
    table isn't present yet, getRoomMembers still returns membership
@@ -18,6 +22,13 @@
 import { supabase } from './supabase';
 
 const nowIso = () => new Date().toISOString();
+
+const DEFAULT_TIMER_STATE = {
+  isRunning: false,
+  timeLeft: 1500,
+  mode: 'focus',
+  startedAt: null,
+};
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -69,7 +80,13 @@ export function isValidRoomId(roomId) {
 export async function createRoom(name, userId) {
   const { data: room, error } = await supabase
     .from('rooms')
-    .insert({ name, created_by: userId, is_active: true })
+    .insert({
+      name,
+      created_by: userId,
+      host_id: userId,
+      is_active: true,
+      timer_state: DEFAULT_TIMER_STATE,
+    })
     .select()
     .single();
 
@@ -162,6 +179,90 @@ export async function getRoomMembers(roomId) {
     joined_at: m.joined_at,
     active_task: m.active_task ?? null,
   }));
+}
+
+/**
+ * Host-only: set the room's shared ambience space.
+ * Verifies host_id on the update query. Returns { data, error }.
+ */
+export async function updateRoomSpace(roomId, hostId, spaceId) {
+  const { data, error } = await supabase
+    .from('rooms')
+    .update({ current_space_id: spaceId })
+    .eq('id', roomId)
+    .eq('host_id', hostId)
+    .select()
+    .single();
+
+  if (error) console.error('[rooms] updateRoomSpace error:', error);
+  return { data, error };
+}
+
+/**
+ * Host-only: push shared timer state to the room.
+ * Verifies host_id on the update query. Returns { data, error }.
+ */
+export async function updateRoomTimer(roomId, hostId, timerState) {
+  const { data, error } = await supabase
+    .from('rooms')
+    .update({ timer_state: timerState })
+    .eq('id', roomId)
+    .eq('host_id', hostId)
+    .select()
+    .single();
+
+  if (error) console.error('[rooms] updateRoomTimer error:', error);
+  return { data, error };
+}
+
+/**
+ * Fetch shared room state plus member list.
+ * Returns { current_space_id, timer_state, host_id, name, members }
+ * or null when the room cannot be loaded.
+ */
+export async function getRoomState(roomId) {
+  const { data: room, error } = await supabase
+    .from('rooms')
+    .select('current_space_id, timer_state, host_id, name')
+    .eq('id', roomId)
+    .single();
+
+  if (error) {
+    console.error('[rooms] getRoomState error:', error);
+    return null;
+  }
+
+  const members = await getRoomMembers(roomId);
+  return {
+    current_space_id: room.current_space_id ?? null,
+    timer_state: room.timer_state ?? DEFAULT_TIMER_STATE,
+    host_id: room.host_id ?? null,
+    name: room.name,
+    members,
+  };
+}
+
+/**
+ * Subscribe to room row changes (space + timer state) via Supabase Realtime.
+ * `callback` receives the full updated rooms row on insert/update/delete.
+ * Returns the channel (pass it to unsubscribeFromRoom).
+ */
+export function subscribeToRoomState(roomId, callback) {
+  const channel = supabase
+    .channel(`room-state-${roomId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'rooms',
+        filter: `id=eq.${roomId}`,
+      },
+      (payload) => callback(payload.new ?? payload.old)
+    )
+    .subscribe();
+
+  return channel;
 }
 
 /**
