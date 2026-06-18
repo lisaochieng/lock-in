@@ -49,20 +49,6 @@ const load = (key, fallback) => {
   }
 };
 
-// Map a Supabase auth user into the shape the UI already expects.
-const mapUser = (u) => {
-  if (!u) return null;
-  const meta = u.user_metadata || {};
-  const provider = u.app_metadata?.provider || (meta.avatar_url ? 'google' : 'email');
-  return {
-    id: u.id,
-    email: u.email,
-    name: meta.name || meta.full_name || (u.email ? u.email.split('@')[0] : 'student'),
-    avatar_url: meta.avatar_url || null,
-    provider,
-  };
-};
-
 // Translate between the UI `settings` object and the DB `goals` row.
 // The DB only stores the daily/weekly minute goals; the timer durations
 // (focus / short break / long break) are device preferences kept in
@@ -186,15 +172,16 @@ function App() {
     auth.getCurrentUser()
       .then(({ user: u, error }) => {
         if (error) console.error('[auth] getCurrentUser error:', error);
-        if (active) { setUser(mapUser(u)); setAuthChecked(true); }
+        if (active) { setUser(u); setAuthChecked(true); }
       })
       .catch((e) => {
         console.error('[auth] getCurrentUser threw:', e);
         if (active) setAuthChecked(true);
       });
-    const unsub = auth.onAuthStateChange((event, session) => {
+    const unsub = auth.onAuthStateChange(async (event, session) => {
       console.log('[auth] onAuthStateChange fired:', event, '— session user:', session?.user ?? null);
-      setUser(mapUser(session?.user ?? null));
+      const hydrated = await auth.hydrateUser(session?.user ?? null);
+      setUser(hydrated);
       setAuthChecked(true);
       setShowHero(false);
     });

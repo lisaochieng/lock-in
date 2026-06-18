@@ -32,14 +32,54 @@ export const emptyProgressAnalysis = () => ({
   streak: 0,
   totalHours: 0,
   tasksCompleted: 0,
-  bestSession: { minutes: 0, date: null },
-  mostProductiveDay: null,
-  mostProductiveHour: null,
+  insights: [],
   weeklyBreakdown: [],
   monthlyBreakdown: [],
   trend: 'steady',
-  insights: [],
+  bestSession: null,
+  mostProductiveDay: null,
+  mostProductiveHour: null,
 });
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const currentStreak = (minutesByDay) => {
+  let streak = 0;
+  const cursor = startOfToday();
+  while ((minutesByDay[dayKey(cursor)] || 0) > 0) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+};
+
+const longestStreak = (minutesByDay) => {
+  const activeDays = Object.keys(minutesByDay)
+    .filter((key) => minutesByDay[key] > 0)
+    .sort();
+  if (activeDays.length === 0) return 0;
+
+  let max = 1;
+  let run = 1;
+  for (let i = 1; i < activeDays.length; i += 1) {
+    const prev = new Date(`${activeDays[i - 1]}T12:00:00`);
+    const curr = new Date(`${activeDays[i]}T12:00:00`);
+    const gap = Math.round((curr - prev) / DAY_MS);
+    if (gap === 1) {
+      run += 1;
+      max = Math.max(max, run);
+    } else {
+      run = 1;
+    }
+  }
+  return max;
+};
+
+export const formatMemberSince = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
 
 const localTimeZone = () => {
   try {
@@ -162,26 +202,31 @@ const mapRpcToAnalysis = (raw) => {
 
 /** Client-side fallback when get_user_stats RPC is missing or errors. */
 async function buildClientAnalysis(userId) {
-  const [sessionStats, goalsRes, sessionsRes, tasksRes] = await Promise.all([
-    fetchSessionStats(userId),
-    supabase
-      .from('goals')
-      .select('daily_goal_minutes, weekly_goal_minutes')
-      .eq('user_id', userId)
-      .maybeSingle(),
-    supabase
-      .from('sessions')
-      .select('duration_minutes, created_at')
-      .eq('user_id', userId)
-      .eq('session_type', 'focus'),
-    supabase
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('completed', true),
-  ]);
+  const sessionsRes = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId);
+  console.log('[progress] sessions query:', sessionsRes.data, sessionsRes.error);
 
-  const rows = sessionsRes.data ?? [];
+  const tasksRes = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('completed', true);
+  console.log('[progress] tasks query:', tasksRes.data, tasksRes.error);
+
+  const goalsRes = await supabase
+    .from('goals')
+    .select('daily_goal_minutes, weekly_goal_minutes')
+    .eq('user_id', userId)
+    .maybeSingle();
+  console.log('[progress] goals query:', goalsRes.data, goalsRes.error);
+
+  if (sessionsRes.error && tasksRes.error) {
+    return emptyProgressAnalysis();
+  }
+
+  const rows = (sessionsRes.data ?? []).filter((row) => row.session_type === 'focus');
   const minutesByDay = {};
   for (const row of rows) {
     const key = dayKey(row.created_at);
@@ -195,7 +240,7 @@ async function buildClientAnalysis(userId) {
     lastWeekMinutes += minutesByDay[dayKey(d)] || 0;
   }
 
-  let bestSession = { minutes: 0, date: null };
+  let bestSession = null;
   const hourTotals = {};
   const dowTotals = [0, 0, 0, 0, 0, 0, 0];
   let totalMinutes = 0;
@@ -203,7 +248,7 @@ async function buildClientAnalysis(userId) {
   for (const row of rows) {
     const minutes = row.duration_minutes || 0;
     totalMinutes += minutes;
-    if (minutes > bestSession.minutes) {
+    if (!bestSession || minutes > bestSession.minutes) {
       bestSession = { minutes, date: dayKey(row.created_at) };
     }
     const created = new Date(row.created_at);
@@ -227,22 +272,25 @@ async function buildClientAnalysis(userId) {
   dowTotals.forEach((mins, idx) => {
     if (mins > bestDowTotal) {
       bestDowTotal = mins;
-      mostProductiveDow = WEEKDAYS_LOWER[idx];
+      mostProductiveDow = WEEKDAYS[idx];
     }
   });
 
   const dailyGoal = goalsRes.data?.daily_goal_minutes ?? 120;
   const weeklyGoal = goalsRes.data?.weekly_goal_minutes ?? 600;
+  const sessionStats = await fetchSessionStats(userId);
+  console.log('[progress] session stats fallback:', sessionStats);
   const weeklyMinutes = sessionStats.weeklyMinutes ?? 0;
   const trend = computeTrend(weeklyMinutes, lastWeekMinutes);
+  const tasksCompleted = (tasksRes.data ?? []).length;
 
   return {
     todayMinutes: sessionStats.todayMinutes ?? 0,
     weeklyMinutes,
     weeklyGoal,
-    streak: sessionStats.streak ?? 0,
+    streak: currentStreak(minutesByDay),
     totalHours: Math.round((totalMinutes / 60) * 10) / 10,
-    tasksCompleted: tasksRes.count ?? 0,
+    tasksCompleted,
     bestSession,
     mostProductiveDay: mostProductiveDow,
     mostProductiveHour,
@@ -250,12 +298,12 @@ async function buildClientAnalysis(userId) {
     monthlyBreakdown: [],
     trend,
     insights: generateInsights({
-      streak: sessionStats.streak ?? 0,
+      streak: currentStreak(minutesByDay),
       todayMinutes: sessionStats.todayMinutes ?? 0,
       dailyGoal,
       trend,
       mostProductiveHour,
-      tasksCompleted: tasksRes.count ?? 0,
+      tasksCompleted,
       weeklyMinutes,
     }),
   };
@@ -267,29 +315,84 @@ async function buildClientAnalysis(userId) {
  * Returns { data, error }.
  */
 export async function fetchProgressAnalysis(userId) {
+  console.log('[progress] fetchProgressAnalysis userId:', userId);
   if (!userId) return { data: emptyProgressAnalysis(), error: null };
 
-  const { data: raw, error } = await supabase.rpc('get_user_stats', {
+  const rpcRes = await supabase.rpc('get_user_stats', {
     p_user_id: userId,
     p_tz: localTimeZone(),
   });
+  console.log('[progress] get_user_stats rpc:', rpcRes.data, rpcRes.error);
 
-  if (!error && raw) {
-    return { data: mapRpcToAnalysis(raw), error: null };
+  if (!rpcRes.error && rpcRes.data) {
+    return { data: mapRpcToAnalysis(rpcRes.data), error: null };
   }
 
-  if (error) {
+  if (rpcRes.error) {
     console.warn(
       '[progress] get_user_stats RPC failed — using client fallback.',
-      error.message || error,
+      rpcRes.error.message || rpcRes.error,
     );
   }
 
   try {
     const data = await buildClientAnalysis(userId);
-    return { data, error: null };
+    return { data: data ?? emptyProgressAnalysis(), error: null };
   } catch (e) {
     console.error('[progress] client fallback failed:', e);
     return { data: emptyProgressAnalysis(), error: e };
   }
+}
+
+/**
+ * Profile-oriented lifetime stats for the signed-in user.
+ */
+export async function fetchUserProfileStats(userId) {
+  console.log('[progress] fetchUserProfileStats userId:', userId);
+  const empty = {
+    memberSince: '—',
+    totalFocusHours: 0,
+    totalSessions: 0,
+    totalTasksCompleted: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+  };
+  if (!userId) return { data: empty, error: null };
+
+  const sessionsRes = await supabase
+    .from('sessions')
+    .select('duration_minutes, created_at, session_type')
+    .eq('user_id', userId);
+  console.log('[progress] profile sessions:', sessionsRes.data, sessionsRes.error);
+
+  const tasksRes = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('completed', true);
+  console.log('[progress] profile tasks:', tasksRes.data, tasksRes.error);
+
+  const authRes = await supabase.auth.getUser();
+  console.log('[progress] profile auth user:', authRes.data?.user?.id, authRes.error);
+
+  const focusRows = (sessionsRes.data ?? []).filter((row) => row.session_type === 'focus');
+  const minutesByDay = {};
+  for (const row of focusRows) {
+    const key = dayKey(row.created_at);
+    minutesByDay[key] = (minutesByDay[key] || 0) + (row.duration_minutes || 0);
+  }
+
+  const totalMinutes = focusRows.reduce((sum, row) => sum + (row.duration_minutes || 0), 0);
+
+  return {
+    data: {
+      memberSince: formatMemberSince(authRes.data?.user?.created_at),
+      totalFocusHours: Math.round((totalMinutes / 60) * 10) / 10,
+      totalSessions: focusRows.length,
+      totalTasksCompleted: (tasksRes.data ?? []).length,
+      currentStreak: currentStreak(minutesByDay),
+      longestStreak: longestStreak(minutesByDay),
+    },
+    error: sessionsRes.error ?? tasksRes.error ?? null,
+  };
 }

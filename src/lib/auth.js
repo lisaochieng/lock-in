@@ -17,16 +17,51 @@
 import { supabase } from './supabase';
 
 /**
+ * Map a Supabase auth user + optional profile row into the UI shape.
+ */
+export function formatUser(user, profile = null) {
+  if (!user) return null;
+  const meta = user.user_metadata || {};
+  const name = profile?.name || meta.full_name || meta.name || '';
+  return {
+    id: user.id,
+    email: user.email,
+    name: name || (user.email ? user.email.split('@')[0] : 'student'),
+    avatar_url: profile?.avatar_url || meta.avatar_url || '',
+    provider: user.app_metadata?.provider || (meta.avatar_url ? 'google' : 'email'),
+    created_at: user.created_at,
+    totalSessions: 0,
+    memberSince: user.created_at,
+  };
+}
+
+/**
+ * Load profile row and merge onto the auth user.
+ */
+export async function hydrateUser(authUser) {
+  if (!authUser) return null;
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authUser.id)
+    .single();
+  console.log('[auth] profile query:', profile, error);
+
+  return formatUser(authUser, profile);
+}
+
+/**
  * Create a new account with email + password.
  * The display name is stored in user metadata so the DB trigger
- * (handle_new_user) can copy it into public.users.
+ * (handle_new_user) can copy it into public.profiles.
  */
 export async function signUpWithEmail(email, password, name) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { name },
+      data: { name, full_name: name },
     },
   });
   return { user: data?.user ?? null, session: data?.session ?? null, error };
@@ -67,11 +102,16 @@ export async function signOut() {
 }
 
 /**
- * Get the currently authenticated user (or null if signed out).
+ * Get the currently authenticated user (or null if signed out),
+ * merged with their profiles row when available.
  */
 export async function getCurrentUser() {
   const { data, error } = await supabase.auth.getUser();
-  return { user: data?.user ?? null, error };
+  const authUser = data?.user ?? null;
+  if (!authUser) return { user: null, error };
+
+  const user = await hydrateUser(authUser);
+  return { user, error };
 }
 
 /**

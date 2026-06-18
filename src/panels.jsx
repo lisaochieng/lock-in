@@ -9,7 +9,7 @@ import {
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
-import { fetchProgressAnalysis, emptyProgressAnalysis } from './lib/progress';
+import { fetchProgressAnalysis, emptyProgressAnalysis, fetchUserProfileStats, formatMemberSince } from './lib/progress';
 import { searchSpaces } from './lib/spaces';
 import {
   createRoom,
@@ -178,12 +178,32 @@ export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat,
 }
 
 export function ProfilePanel({ theme, user, onSignOut, onShowHero }) {
+  const [profileStats, setProfileStats] = useState(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setProfileStats(null);
+      return undefined;
+    }
+    let active = true;
+    fetchUserProfileStats(user.id).then(({ data }) => {
+      if (active) setProfileStats(data);
+    });
+    return () => { active = false; };
+  }, [user?.id]);
+
   if (user) {
-    const sessionRows = [['focus today', '1h 50m'], ['current streak', '3 days'], ['member since', 'jan 2026']];
+    const initial = (user.name || user.email || '?')[0].toUpperCase();
+    const sessionRows = [
+      ['focus hours', profileStats ? `${profileStats.totalFocusHours}h` : '—'],
+      ['sessions', profileStats ? profileStats.totalSessions : '—'],
+      ['current streak', profileStats ? `${profileStats.currentStreak} days` : '—'],
+      ['member since', profileStats?.memberSince || formatMemberSince(user.memberSince || user.created_at)],
+    ];
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 22 }}>
-          <div style={{ width: 60, height: 60, borderRadius: '50%', background: `linear-gradient(150deg, ${theme.accent}, rgba(255,255,255,0.25))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 600, color: theme.accentInk, marginBottom: 16 }}>{user.name[0].toUpperCase()}</div>
+          <div style={{ width: 60, height: 60, borderRadius: '50%', background: `linear-gradient(150deg, ${theme.accent}, rgba(255,255,255,0.25))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 600, color: theme.accentInk, marginBottom: 16 }}>{initial}</div>
           <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600, color: theme.text }}>{user.name}</div>
           <div style={{ fontSize: 13, color: theme.textDim, marginTop: 6 }}>{user.email}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, fontSize: 12, color: theme.textFaint }}>
@@ -191,7 +211,7 @@ export function ProfilePanel({ theme, user, onSignOut, onShowHero }) {
           </div>
         </div>
         <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 16 }}>
-          <div style={{ fontSize: 11, color: theme.textFaint, marginBottom: 12, textTransform: 'lowercase', letterSpacing: '.04em' }}>this session</div>
+          <div style={{ fontSize: 11, color: theme.textFaint, marginBottom: 12, textTransform: 'lowercase', letterSpacing: '.04em' }}>your stats</div>
           {sessionRows.map(([k, v], i) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}>
               <span style={{ fontSize: 13, color: theme.textDim }}>{k}</span>
