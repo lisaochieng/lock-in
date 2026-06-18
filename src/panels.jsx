@@ -9,7 +9,7 @@ import {
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
-import { fetchProgressAnalysis } from './lib/progress';
+import { fetchProgressAnalysis, emptyProgressAnalysis } from './lib/progress';
 import { searchSpaces } from './lib/spaces';
 import {
   createRoom,
@@ -817,10 +817,12 @@ function ProgressSkeleton({ theme }) {
   );
 }
 
-export function ProgressPanel({ theme, userId, settings, tasks = [] }) {
+export function ProgressPanel({ theme, userId, settings, tasks = [], todayMinutes = 0, stats = null }) {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [chartTip, setChartTip] = useState(null);
+
+  const applyAnalysis = (data) => setAnalysis(data || emptyProgressAnalysis());
 
   useEffect(() => {
     if (!userId) {
@@ -830,25 +832,24 @@ export function ProgressPanel({ theme, userId, settings, tasks = [] }) {
     let active = true;
     setLoading(true);
     fetchProgressAnalysis(userId)
-      .then(({ data, error }) => {
+      .then(({ data }) => {
         if (!active) return;
-        setAnalysis(data || {
-          todayMinutes: 0, weeklyMinutes: 0, weeklyGoal: 600, streak: 0,
-          weeklyBreakdown: [], trend: 'steady', insights: [],
-          bestSession: { minutes: 0, date: null }, mostProductiveHour: null,
-        });
+        applyAnalysis(data);
         setLoading(false);
       })
-      .catch(() => { if (active) setLoading(false); });
+      .catch(() => {
+        if (active) {
+          applyAnalysis(null);
+          setLoading(false);
+        }
+      });
     return () => { active = false; };
   }, [userId]);
 
   useEffect(() => {
     if (!userId) return undefined;
     const onSessionLogged = () => {
-      fetchProgressAnalysis(userId).then(({ data, error }) => {
-        if (!error && data) setAnalysis(data);
-      });
+      fetchProgressAnalysis(userId).then(({ data }) => applyAnalysis(data));
     };
     window.addEventListener('session:logged', onSessionLogged);
     return () => window.removeEventListener('session:logged', onSessionLogged);
@@ -867,9 +868,18 @@ export function ProgressPanel({ theme, userId, settings, tasks = [] }) {
   );
 
   if (!userId) {
+    const guestToday = todayMinutes || stats?.days?.[todayKey()] || 0;
+    const guestStreak = stats?.streak ?? 0;
     return (
-      <div style={{ fontSize: 12.5, color: theme.textDim, lineHeight: 1.55 }}>
-        sign in to see your all-time focus stats, streaks, and session history.
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 9 }}>
+          {statCard(<Clock size={15} />, 'focused', `${guestToday}m`)}
+          {statCard(<Flame size={15} />, 'streak', guestStreak)}
+          {statCard(<Check size={15} />, 'tasks', `${tasksPct}%`)}
+        </div>
+        <div style={{ fontSize: 12.5, color: theme.textDim, lineHeight: 1.55 }}>
+          sign in to sync progress across devices and unlock weekly insights.
+        </div>
       </div>
     );
   }

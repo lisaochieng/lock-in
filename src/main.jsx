@@ -649,7 +649,16 @@ function App() {
       )}
       {widgetsOpen.tasks && <TasksWidget {...wProps('tasks')} tasks={tasks} setTasks={setTasks} />}
       {widgetsOpen.goals && <GoalsWidget {...wProps('goals')} settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />}
-      {widgetsOpen.progress && <ProgressWidget {...wProps('progress')} user={user} settings={settings} tasks={tasks} />}
+      {widgetsOpen.progress && (
+        <ProgressWidget
+          {...wProps('progress')}
+          user={user}
+          settings={settings}
+          tasks={tasks}
+          todayMinutes={todayMinutes}
+          stats={stats}
+        />
+      )}
       {widgetsOpen.room && (
         <RoomWidget
           {...wProps('room')}

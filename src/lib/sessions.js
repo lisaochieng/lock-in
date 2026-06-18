@@ -143,7 +143,7 @@ export async function fetchSessionStats(userId) {
     const d = new Date(todayStart.getTime() - i * DAY_MS);
     const minutes = minutesByDay[dayKey(d)] || 0;
     weeklyMinutes += minutes;
-    weeklyBreakdown.push({ day: WEEKDAYS[d.getDay()], minutes });
+    weeklyBreakdown.push({ day: WEEKDAYS[d.getDay()], minutes, date: dayKey(d) });
   }
 
   return { todayMinutes, weeklyMinutes, streak: streakFromSessions(rows), weeklyBreakdown };
