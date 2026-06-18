@@ -5,7 +5,7 @@
 -- canonical snapshot of the schema the app (src/lib/db.js) expects.
 -- Idempotent: safe to run multiple times in the Supabase SQL editor.
 --
--- Tables: sessions, goals, tasks, rooms, room_members, favorites
+-- Tables: sessions, goals, tasks, rooms, room_members, favorites, spaces
 -- RLS   : enabled on every table
 -- Policy: a user can only read/write rows where user_id = auth.uid()
 --         (rooms are owned via created_by). room_members can be read
@@ -95,14 +95,30 @@ create table if not exists public.profiles (
   updated_at  timestamptz not null default now()
 );
 
+-- -----------------------------------------------------------
+-- spaces  (public catalog)
+-- -----------------------------------------------------------
+create table if not exists public.spaces (
+  id              text primary key,
+  name            text not null,
+  tags            text,
+  thumbnail_url   text,
+  background_url  text,
+  quote           text
+);
+
 -- ===========================================================
--- Indexes (lookups by owner)
+-- Indexes (lookups by owner + performance)
 -- ===========================================================
 create index if not exists idx_sessions_user_id     on public.sessions (user_id);
+create index if not exists idx_sessions_user_created on public.sessions (user_id, created_at desc);
+create index if not exists idx_sessions_user_date    on public.sessions (user_id, created_at);
 create index if not exists idx_tasks_user_id         on public.tasks (user_id);
+create index if not exists idx_tasks_user            on public.tasks (user_id);
 create index if not exists idx_rooms_created_by       on public.rooms (created_by);
 create index if not exists idx_room_members_user_id   on public.room_members (user_id);
 create index if not exists idx_room_members_room_id   on public.room_members (room_id);
+create index if not exists idx_room_members_room      on public.room_members (room_id);
 create index if not exists idx_favorites_user_id      on public.favorites (user_id);
 
 -- ===========================================================
@@ -115,6 +131,7 @@ alter table public.rooms        enable row level security;
 alter table public.room_members enable row level security;
 alter table public.favorites    enable row level security;
 alter table public.profiles     enable row level security;
+alter table public.spaces       enable row level security;
 
 -- Helper: is the given user a member of the given room?
 -- SECURITY DEFINER bypasses RLS so the room_members policy below
@@ -131,6 +148,12 @@ as $$
     where room_id = p_room_id and user_id = p_user_id
   );
 $$;
+
+-- ---------- spaces ----------
+-- Public read-only catalog.
+drop policy if exists "spaces read all" on public.spaces;
+create policy "spaces read all" on public.spaces
+  for select using (true);
 
 -- ---------- sessions ----------
 drop policy if exists "sessions own rows" on public.sessions;

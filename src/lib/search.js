@@ -1,0 +1,46 @@
+/* ===========================================================
+   YouTube URL parsing — pure string helpers, no API calls.
+   =========================================================== */
+
+const VIDEO_ID_PATTERN = /[a-zA-Z0-9_-]{11}/;
+
+const EMBED_QUERY =
+  'autoplay=1&mute=1&loop=1&controls=0&disablekb=1&fs=0&modestbranding=1'
+  + '&playsinline=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1';
+
+/**
+ * Extract an 11-char YouTube video id from a full URL, youtu.be link, or bare id.
+ * Returns '' when no id can be parsed.
+ */
+export function extractVideoId(url) {
+  const trimmed = (url ?? '').trim();
+  if (!trimmed) return '';
+
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+
+  const short = trimmed.match(/(?:youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (short) return short[1];
+
+  const embed = trimmed.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+  if (embed) return embed[1];
+
+  const vParam = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (vParam) return vParam[1];
+
+  const pathV = trimmed.match(/\/v\/([a-zA-Z0-9_-]{11})/);
+  if (pathV) return pathV[1];
+
+  // Last resort: first 11-char token that looks like a video id.
+  const fallback = trimmed.match(VIDEO_ID_PATTERN);
+  return fallback ? fallback[0] : '';
+}
+
+/**
+ * Build a clean YouTube embed URL with hidden controls and looping enabled.
+ * Accepts full URL, shortened youtu.be link, or bare video id.
+ */
+export function buildYouTubeEmbedUrl(rawInput) {
+  const videoId = extractVideoId(rawInput);
+  if (!videoId) return '';
+  return `https://www.youtube.com/embed/${videoId}?${EMBED_QUERY}&playlist=${videoId}`;
+}
