@@ -19,12 +19,9 @@ import AmbientBackground from './AmbientBackground';
 import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget } from './widgets';
 import {
   VolumeRailWidget,
-  SoundEnablePill,
   RoomTopBar,
   loadYtVolume,
   saveYtVolume,
-  loadYtSoundEnabled,
-  saveYtSoundEnabled,
 } from './panels';
 import Landing from './Landing';
 import * as auth from './lib/auth';
@@ -148,7 +145,7 @@ function App() {
   const [videoStart, setVideoStart] = useState(spaces.find((s) => s.id === activeSpace)?.startAt ?? 10);
   const [customVideoUrl, setCustomVideoUrl] = useState('');
   const [videoStarted, setVideoStarted] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(() => loadYtSoundEnabled());
+  const [ytReady, setYtReady] = useState(false);
   const [ytVolume, setYtVolume] = useState(() => loadYtVolume());
   const [ytWidgetMuted, setYtWidgetMuted] = useState(false);
   const iframeRef = useRef(null);
@@ -371,35 +368,34 @@ function App() {
   const selectSpace = useCallback((s) => setActiveSpace(s.id), [setActiveSpace]);
   const handleShowHero = useCallback(() => setShowHero(true), []);
 
-  const syncIframeVolume = useCallback(() => {
-    const muted = ytWidgetMuted || !soundEnabled;
-    const apply = () => applyYouTubeVolume(iframeRef.current, ytVolume, muted);
-    apply();
-    window.setTimeout(apply, 400);
-    window.setTimeout(apply, 1200);
-  }, [ytVolume, ytWidgetMuted, soundEnabled]);
+  const handleIframeLoad = useCallback(() => {
+    window.setTimeout(() => {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func: 'setVolume',
+          args: [45],
+        }),
+        '*',
+      );
+    }, 1000);
+  }, []);
 
   const handleYtVolumeChange = useCallback((value) => {
     setYtVolume(value);
     saveYtVolume(value);
-    if (!ytWidgetMuted && soundEnabled) {
+    if (!ytWidgetMuted) {
       applyYouTubeVolume(iframeRef.current, value, false);
     }
-  }, [ytWidgetMuted, soundEnabled]);
+  }, [ytWidgetMuted]);
 
   const toggleYtMute = useCallback(() => {
     setYtWidgetMuted((prev) => {
       const next = !prev;
-      applyYouTubeVolume(iframeRef.current, ytVolume, next || !soundEnabled);
+      applyYouTubeVolume(iframeRef.current, ytVolume, next);
       return next;
     });
-  }, [ytVolume, soundEnabled]);
-
-  const enableSound = useCallback(() => {
-    saveYtSoundEnabled();
-    setSoundEnabled(true);
-    setYtWidgetMuted(false);
-  }, []);
+  }, [ytVolume]);
 
   const handleLeaveRoom = useCallback(async () => {
     if (currentRoom?.id && user?.id) await leaveRoom(currentRoom.id, user.id);
@@ -430,7 +426,11 @@ function App() {
     const nextSpace = spaces.find((item) => item.id === activeSpace) || spaces[0];
     setActiveVideo(nextSpace.video);
     setVideoStart(nextSpace.startAt ?? 10);
-    setVideoStarted(false);
+    setVideoStarted(true);
+
+    const unlockSound = () => setYtReady(true);
+    document.addEventListener('click', unlockSound, { once: true });
+    return () => document.removeEventListener('click', unlockSound);
   }, [activeSpace]);
 
   useEffect(() => {
@@ -577,9 +577,9 @@ function App() {
 
   useEffect(() => {
     if (!videoStarted || !iframeRef.current) return undefined;
-    applyYouTubeVolume(iframeRef.current, ytVolume, ytWidgetMuted || !soundEnabled);
+    applyYouTubeVolume(iframeRef.current, ytVolume, ytWidgetMuted);
     return undefined;
-  }, [videoStarted, ytVolume, ytWidgetMuted, soundEnabled]);
+  }, [videoStarted, ytVolume, ytWidgetMuted]);
 
   const loadCustomVideo = () => {
     const id = extractVideoId(customVideoUrl);
@@ -587,9 +587,8 @@ function App() {
   };
 
   const ambienceEmbedUrl = videoStarted && activeVideo
-    ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart, muted: !soundEnabled })
+    ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart, muted: false })
     : '';
-  const showSoundPill = videoStarted && activeVideo && !soundEnabled;
 
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const widgetInit = {
@@ -622,36 +621,19 @@ function App() {
       <AmbientBackground theme={theme} image={space.image} />
 
       {ambienceEmbedUrl && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-          <div style={{ position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}>
-            <iframe
-              ref={iframeRef}
-              key={`${activeVideo}-${videoStart}-${soundEnabled ? 'sound' : 'muted'}`}
-              title="peaceful study ambience"
-              src={ambienceEmbedUrl}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              frameBorder={0}
-              onLoad={syncIframeVolume}
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%,-50%)',
-                width: 'max(100vw, 177.78vh)',
-                height: 'max(100vh, 56.25vw)',
-                pointerEvents: 'none',
-              }}
-            />
-            <div
-              aria-hidden
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}
-            />
-          </div>
+        <div className="yt-wrapper">
+          <iframe
+            ref={iframeRef}
+            key={`${activeVideo}-${videoStart}-${ytReady ? 'sound' : 'muted'}`}
+            title="peaceful study ambience"
+            src={ambienceEmbedUrl}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            frameBorder={0}
+            onLoad={handleIframeLoad}
+          />
           <div style={{ position: 'absolute', inset: 0, background: theme.tone === 'light' ? 'rgba(240,245,248,0.30)' : 'rgba(8,12,16,0.42)', pointerEvents: 'none' }} />
         </div>
       )}
-
-      {showSoundPill && <SoundEnablePill theme={theme} onEnable={enableSound} />}
 
       {/* left rail */}
       <div className="rail" style={{ background: theme.railBg, borderRight: `1px solid ${theme.panelBorder}` }}>
@@ -664,7 +646,7 @@ function App() {
             theme={theme}
             volume={ytVolume}
             onVolumeChange={handleYtVolumeChange}
-            muted={ytWidgetMuted || !soundEnabled}
+            muted={ytWidgetMuted || !ytReady}
             onToggleMute={toggleYtMute}
           />
           <RailBtn theme={theme} icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />

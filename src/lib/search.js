@@ -56,7 +56,7 @@ export function buildYouTubeEmbedUrl(rawInput, options = {}) {
     start: String(Math.max(0, Number(start) || 0)),
     playlist: videoId,
   });
-  if (muted) params.set('mute', '1');
+  params.set('mute', muted ? '1' : '0');
   if (origin) params.set('origin', origin);
 
   return `https://www.youtube-nocookie.com/embed/${videoId}?${params}`;
