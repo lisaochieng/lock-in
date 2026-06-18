@@ -305,7 +305,7 @@ export function ProgressWidget(props) {
 
 /* ------- Room ------- */
 export function RoomWidget(props) {
-  const { theme, user, room, onRoomChange, activeTaskTitle } = props;
+  const { theme, user, room, onRoomChange, activeTaskTitle, activeSpaceId, onActiveSpaceChange } = props;
   return (
     <Widget {...props} title="room" icon={<Users size={15} />} width={300}>
       <Suspense fallback={<WidgetPanelSkeleton />}>
@@ -315,6 +315,8 @@ export function RoomWidget(props) {
           room={room}
           onRoomChange={onRoomChange}
           activeTaskTitle={activeTaskTitle}
+          activeSpaceId={activeSpaceId}
+          onActiveSpaceChange={onActiveSpaceChange}
         />
       </Suspense>
     </Widget>

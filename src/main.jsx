@@ -357,7 +357,7 @@ function App() {
       if (error) return;
       const details = await getRoom(roomId);
       if (!details) return;
-      setRoom({ id: details.id, name: details.name });
+      setRoom({ id: details.id, name: details.name, host_id: details.host_id });
       sessionStorage.removeItem(PENDING_ROOM_KEY);
       if (roomFromUrl) window.history.replaceState({}, '', window.location.pathname);
     };
@@ -872,6 +872,8 @@ function App() {
           room={currentRoom}
           onRoomChange={setRoom}
           activeTaskTitle={activeTaskTitle}
+          activeSpaceId={activeSpace}
+          onActiveSpaceChange={setActiveSpace}
         />
       )}
       {widgetsOpen.sound && (

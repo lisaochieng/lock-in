@@ -198,4 +198,12 @@ export const spaces = [
 
 export const categories = ['all', ...new Set(spaces.map((item) => item.category))];
 
+export function getAllSpaces() {
+  return spaces;
+}
+
+export function getSpaceById(id) {
+  return spaces.find((item) => item.id === id) || spaces[0];
+}
+
 export { extractVideoId as extractYouTubeId } from './lib/search';

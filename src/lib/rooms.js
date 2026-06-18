@@ -58,7 +58,7 @@ export function roomInviteLink(roomId) {
 export async function getRoom(roomId) {
   const { data, error } = await supabase
     .from('rooms')
-    .select('id, name, created_by, created_at, is_active')
+    .select('id, name, created_by, host_id, created_at, is_active, current_space_id, timer_state')
     .eq('id', roomId)
     .single();
 

@@ -7,20 +7,24 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
-  Volume2, VolumeX, Pencil,
+  Volume2, VolumeX, Pencil, Play, Pause, RotateCcw,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
 import { fetchProgressAnalysis, emptyProgressAnalysis, fetchUserProfileStats } from './lib/progress';
 import { supabase } from './lib/supabase';
 import { searchSpaces } from './lib/spaces';
+import { getAllSpaces, getSpaceById } from './spaces';
 import {
   createRoom,
   joinRoom,
   leaveRoom,
-  getRoom,
   getRoomMembers,
+  getRoomState,
   updatePresence,
+  updateRoomSpace,
+  updateRoomTimer,
   subscribeToRoom,
+  subscribeToRoomState,
   unsubscribeFromRoom,
   parseRoomInvite,
   roomInviteLink,
@@ -621,8 +625,28 @@ const memberInitials = (member, userId) => {
   return name[0]?.toUpperCase() || '?';
 };
 
-function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null }) {
+const MODE_SECONDS = { focus: 1500, short: 300, long: 900 };
+
+const formatRoomTimer = (seconds) => {
+  const safe = Math.max(0, Math.floor(seconds || 0));
+  const m = String(Math.floor(safe / 60)).padStart(2, '0');
+  const s = String(safe % 60).padStart(2, '0');
+  return `${m}:${s}`;
+};
+
+function RoomPanelImpl({
+  theme,
+  user,
+  room,
+  onRoomChange,
+  activeTaskTitle = null,
+  activeSpaceId = null,
+  onActiveSpaceChange = null,
+}) {
   const [members, setMembers] = useState([]);
+  const [hostId, setHostId] = useState(null);
+  const [roomTimerState, setRoomTimerState] = useState(null);
+  const [displayTimeLeft, setDisplayTimeLeft] = useState(0);
   const [joinInput, setJoinInput] = useState('');
   const [view, setView] = useState('idle'); // idle | creating
   const [createName, setCreateName] = useState('');
@@ -635,9 +659,26 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
   const onRoomChangeRef = useRef(onRoomChange);
   const roomRef = useRef(room);
   const userRef = useRef(user);
+  const activeSpaceIdRef = useRef(activeSpaceId);
   useEffect(() => { onRoomChangeRef.current = onRoomChange; }, [onRoomChange]);
   useEffect(() => { roomRef.current = room; }, [room]);
   useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { activeSpaceIdRef.current = activeSpaceId; }, [activeSpaceId]);
+
+  useEffect(() => {
+    if (room?.host_id) setHostId(room.host_id);
+  }, [room?.host_id]);
+
+  const isHost = Boolean(room?.id && user?.id && hostId === user.id);
+  const allSpaces = useMemo(() => getAllSpaces(), []);
+
+  const hostName = useMemo(() => {
+    if (!hostId) return 'host';
+    const hostMember = members.find((m) => m.user_id === hostId);
+    if (hostMember) return displayName(hostMember, user?.id);
+    if (hostId === user?.id) return user?.name || 'you';
+    return 'host';
+  }, [hostId, members, user?.id, user?.name]);
 
   useEffect(() => {
     if (view === 'creating') createInputRef.current?.focus();
@@ -647,10 +688,93 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
     if (!room) {
       setView('idle');
       setCreateName('');
+      setHostId(null);
+      setRoomTimerState(null);
+      setDisplayTimeLeft(0);
     }
   }, [room]);
 
   const inviteLink = room?.id ? roomInviteLink(room.id) : '';
+
+  const applyRoomState = useCallback((state) => {
+    if (!state) return;
+    if (state.host_id != null) setHostId(state.host_id);
+    if (state.timer_state) {
+      setRoomTimerState(state.timer_state);
+      setDisplayTimeLeft(state.timer_state.timeLeft ?? 0);
+    }
+    if (state.members) setMembers(state.members);
+    const spaceId = state.current_space_id;
+    if (spaceId && spaceId !== activeSpaceIdRef.current && onActiveSpaceChange) {
+      onActiveSpaceChange(spaceId);
+    }
+  }, [onActiveSpaceChange]);
+
+  const applyRoomRow = useCallback((updatedRoom) => {
+    if (!updatedRoom) return;
+    if (updatedRoom.host_id != null) setHostId(updatedRoom.host_id);
+    if (updatedRoom.timer_state) {
+      setRoomTimerState(updatedRoom.timer_state);
+      setDisplayTimeLeft(updatedRoom.timer_state.timeLeft ?? 0);
+    }
+    const spaceId = updatedRoom.current_space_id;
+    if (spaceId && spaceId !== activeSpaceIdRef.current && onActiveSpaceChange) {
+      onActiveSpaceChange(spaceId);
+    }
+  }, [onActiveSpaceChange]);
+
+  // Load shared room state + subscribe to space/timer updates.
+  useEffect(() => {
+    const roomId = room?.id;
+    if (!roomId) return undefined;
+
+    let active = true;
+    let stateChannel = null;
+
+    const load = async () => {
+      const state = await getRoomState(roomId);
+      if (active) applyRoomState(state);
+    };
+
+    load();
+    stateChannel = subscribeToRoomState(roomId, (row) => {
+      if (active) applyRoomRow(row);
+    });
+
+    return () => {
+      active = false;
+      unsubscribeFromRoom(stateChannel);
+    };
+  }, [room?.id, applyRoomState, applyRoomRow]);
+
+  // Local countdown while shared timer is running.
+  useEffect(() => {
+    if (!roomTimerState) return undefined;
+    setDisplayTimeLeft(roomTimerState.timeLeft ?? 0);
+    if (!roomTimerState.isRunning) return undefined;
+
+    const tick = window.setInterval(() => {
+      setDisplayTimeLeft((t) => Math.max(0, t - 1));
+    }, 1000);
+
+    return () => window.clearInterval(tick);
+  }, [roomTimerState?.isRunning, roomTimerState?.timeLeft, roomTimerState?.startedAt, roomTimerState?.mode]);
+
+  // Resync timer from Supabase every 30s for non-host members.
+  useEffect(() => {
+    const roomId = room?.id;
+    if (!roomId || isHost) return undefined;
+
+    const sync = window.setInterval(async () => {
+      const state = await getRoomState(roomId);
+      if (state?.timer_state) {
+        setRoomTimerState(state.timer_state);
+        setDisplayTimeLeft(state.timer_state.timeLeft ?? 0);
+      }
+    }, 30_000);
+
+    return () => window.clearInterval(sync);
+  }, [room?.id, isHost]);
 
   // Realtime membership + presence heartbeat while in a room.
   useEffect(() => {
@@ -715,7 +839,7 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
     }
     setCreateName('');
     setView('idle');
-    onRoomChange({ id: created.id, name: created.name });
+    onRoomChange({ id: created.id, name: created.name, host_id: created.host_id });
   };
 
   const cancelCreate = () => {
@@ -744,14 +868,14 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
       setError('could not join that room.');
       return;
     }
-    const details = await getRoom(roomId);
+    const state = await getRoomState(roomId);
     setJoinBusy(false);
-    if (!details) {
+    if (!state) {
       setError('joined, but could not load room details.');
       return;
     }
     setJoinInput('');
-    onRoomChange({ id: details.id, name: details.name });
+    onRoomChange({ id: roomId, name: state.name, host_id: state.host_id });
   };
 
   const copyInvite = () => {
@@ -759,6 +883,53 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
     navigator.clipboard?.writeText(inviteLink);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
+  };
+
+  const handleSpaceSelect = async (spaceId) => {
+    if (!room?.id || !user?.id || !isHost) return;
+    setError('');
+    const { error: spaceError } = await updateRoomSpace(room.id, user.id, spaceId);
+    if (spaceError) {
+      setError('could not update room space.');
+      return;
+    }
+    if (onActiveSpaceChange) onActiveSpaceChange(spaceId);
+  };
+
+  const pushTimerState = async (next) => {
+    if (!room?.id || !user?.id || !isHost) return;
+    setError('');
+    const { error: timerError } = await updateRoomTimer(room.id, user.id, next);
+    if (timerError) setError('could not update shared timer.');
+  };
+
+  const toggleSharedTimer = () => {
+    if (!roomTimerState) return;
+    if (roomTimerState.isRunning) {
+      pushTimerState({
+        ...roomTimerState,
+        isRunning: false,
+        timeLeft: displayTimeLeft,
+        startedAt: null,
+      });
+    } else {
+      pushTimerState({
+        ...roomTimerState,
+        isRunning: true,
+        timeLeft: displayTimeLeft,
+        startedAt: new Date().toISOString(),
+      });
+    }
+  };
+
+  const resetSharedTimer = () => {
+    const mode = roomTimerState?.mode || 'focus';
+    pushTimerState({
+      isRunning: false,
+      timeLeft: MODE_SECONDS[mode] ?? MODE_SECONDS.focus,
+      mode,
+      startedAt: null,
+    });
   };
 
   const sortedMembers = useMemo(() => {
@@ -865,6 +1036,73 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {isHost ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 11, color: theme.accent, letterSpacing: '.03em' }}>you are the host</div>
+          <div style={{ fontSize: 10.5, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>
+            host controls
+          </div>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 10.5, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>space</span>
+            <select
+              value={activeSpaceId || ''}
+              onChange={(e) => handleSpaceSelect(e.target.value)}
+              aria-label="room space"
+              style={{
+                width: '100%',
+                background: theme.fieldBg,
+                border: `1px solid ${theme.fieldBorder}`,
+                color: theme.text,
+                borderRadius: 10,
+                padding: '9px 12px',
+                fontSize: 13,
+                fontFamily: 'inherit',
+              }}
+            >
+              {allSpaces.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+              {formatRoomTimer(displayTimeLeft)}
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={toggleSharedTimer}
+                className="ghostbtn sm"
+                title={roomTimerState?.isRunning ? 'pause timer' : 'start timer'}
+                style={{ color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
+              >
+                {roomTimerState?.isRunning ? <Pause size={14} /> : <Play size={14} />}
+              </button>
+              <button
+                type="button"
+                onClick={resetSharedTimer}
+                className="ghostbtn sm"
+                title="reset timer"
+                style={{ color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
+              >
+                <RotateCcw size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 11, color: theme.textFaint }}>hosted by {hostName}</div>
+          <div style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: theme.text }}>
+            {formatRoomTimer(displayTimeLeft)}
+          </div>
+          <div style={{ fontSize: 11, color: theme.textFaint }}>
+            {getSpaceById(activeSpaceId)?.name || 'shared space'}
+            {roomTimerState?.isRunning ? ' · focusing' : ' · paused'}
+          </div>
+        </div>
+      )}
+
       <div style={{ fontSize: 11, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>
         members · {sortedMembers.length}
       </div>
@@ -874,6 +1112,7 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
           <div style={{ fontSize: 12, color: theme.textFaint }}>no members yet.</div>
         ) : sortedMembers.map((m) => {
           const isYou = m.user_id === user.id;
+          const isRoomHost = m.user_id === hostId;
           const online = memberActive(m.last_seen_at);
           const name = isYou ? (user.name || displayName(m, user.id)) : displayName(m, user.id);
           return (
@@ -891,9 +1130,14 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
                 )}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 13, color: theme.text, fontWeight: isYou ? 600 : 400 }}>{name}</span>
-                  {isYou && <span style={{ fontSize: 10, color: theme.textFaint }}>you</span>}
+                  {isRoomHost && (
+                    <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, color: theme.accent }}>
+                      host
+                    </span>
+                  )}
+                  {isYou && !isRoomHost && <span style={{ fontSize: 10, color: theme.textFaint }}>you</span>}
                 </span>
                 <span style={{ display: 'block', fontSize: 11.5, color: theme.textFaint, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {m.active_task ? `focusing on ${m.active_task}` : 'not focusing on a task'}
