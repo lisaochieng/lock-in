@@ -189,3 +189,39 @@ export const QUOTES = [
 export function themeFor(category) {
   return THEMES[category] || THEMES.rain;
 }
+
+// Quotes tied to each vibe — shown when its space is selected.
+export const THEME_QUOTES = {
+  rain: ['let the rain think alongside you.', 'every drop says: stay a little longer.'],
+  forest: ['the forest keeps an unhurried pace — borrow it.', 'grow quietly, like the trees.'],
+  beach: ['let each wave carry one worry away.', 'breathe with the tide.'],
+  cafe: ['warm cup, soft hum, open page.', 'small comforts make long work lighter.'],
+  library: ['in the quiet, the words come closer.', 'one shelf at a time.'],
+  fireplace: ['let the fire keep the cold thoughts out.', 'warmth is a kind of focus.'],
+  'night city': ['the city hums; let your mind glow.', 'late, lit, and quietly working.'],
+  snow: ['let the snow hush everything but the next line.', 'soft, white, and still — begin.'],
+  'japanese garden': ['rake one calm line, then the next.', 'stillness is also progress.'],
+  underwater: ['sink slowly into the deep work.', 'drift, don’t rush.'],
+  rooftop: ['above the noise, find the next thought.', 'watch the light go gold, then begin.'],
+  thunderstorm: ['let the thunder carry the weight for a while.', 'deep work suits a deep sky.'],
+  waterfall: ['let the steady fall set your rhythm.', 'flow is just steady repetition.'],
+  desert: ['vast quiet, one steady step.', 'the dunes are patient; be patient too.'],
+  mountains: ['climb the page one switchback at a time.', 'clear air, clear mind.'],
+  train: ['let the rails set a gentle rhythm.', 'arrive slowly; you’re already moving.'],
+  'airplane window': ['above the clouds, the noise is small.', 'cruising altitude, calm mind.'],
+  'rice fields': ['green and patient, row by row.', 'tend the work like a quiet field.'],
+  'cherry blossom': ['soft petals, soft start.', 'bloom slowly, on your own time.'],
+  arctic: ['under the lights, the world goes quiet.', 'cold outside, steady within.'],
+  savanna: ['wide horizon, single focus.', 'the golden hour rewards the patient.'],
+  'lavender field': ['breathe the calm in, breathe the rush out.', 'let it be mellow.'],
+  'morning fog': ['the fog lifts as you begin.', 'one soft step into the quiet.'],
+  canal: ['let the water carry you, unhurried.', 'old stone, slow current, clear mind.'],
+  treehouse: ['tucked in the leaves, the world softens.', 'snug, high, and quietly working.'],
+  'cozy bedroom': ['soft light, slow start, steady focus.', 'comfort first, then the work.'],
+};
+
+/** Quotes for a vibe, falling back to the generic set. */
+export function quotesFor(category) {
+  const q = THEME_QUOTES[category];
+  return q && q.length ? q : QUOTES;
+}

@@ -11,7 +11,7 @@ import {
   Target, BarChart3, Users, MoreHorizontal, Play, Pause, Link as LinkIcon,
   ChevronRight,
 } from 'lucide-react';
-import { themeFor, QUOTES } from './theme';
+import { themeFor, quotesFor } from './theme';
 import { spaces, categories, extractYouTubeId } from './spaces';
 import { calendarEventUrl } from './calendar';
 import AmbientBackground from './AmbientBackground';
@@ -135,12 +135,16 @@ function App() {
   const zTop = useRef(50);
   const raise = (k) => { zTop.current += 1; setZMap((m) => ({ ...m, [k]: zTop.current })); };
 
-  // rotating quote
+  // rotating quote, themed to the active space's vibe
   const [qi, setQi] = useState(0);
-  useEffect(() => { const t = setInterval(() => setQi((i) => (i + 1) % QUOTES.length), 11000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setQi((i) => i + 1), 11000); return () => clearInterval(t); }, []);
 
   const space = spaces.find((item) => item.id === activeSpace) || spaces[0];
   const theme = useMemo(() => themeFor(space.category), [space.category]);
+  const quotePool = useMemo(() => quotesFor(space.category), [space.category]);
+  const quote = quotePool[qi % quotePool.length];
+  // Show a quote from the new vibe the moment a space is selected.
+  useEffect(() => { setQi(0); }, [activeSpace]);
 
   // ---- refs for stable access inside effects / timers ----
   const userRef = useRef(user);
@@ -536,7 +540,7 @@ function App() {
 
       {/* title + quote */}
       <div className="titleblock" style={{ left: panel ? 392 : 104 }}>
-        <div key={qi} className="quote" style={{ color: theme.textDim }}>{`“${QUOTES[qi]}”`}</div>
+        <div key={`${activeSpace}-${qi}`} className="quote" style={{ color: theme.textDim }}>{`“${quote}”`}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
           <span style={{ color: theme.accent, display: 'flex' }}><LayoutGrid size={14} /></span>
           <span style={{ fontSize: 13, color: theme.textDim, letterSpacing: '.06em' }}>{space.mood} · {space.category}</span>
