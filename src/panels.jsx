@@ -7,6 +7,7 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
+  Volume2, VolumeX,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
 import { fetchProgressAnalysis, emptyProgressAnalysis } from './lib/progress';
@@ -1036,6 +1037,140 @@ function ProgressPanelImpl({ theme, userId, settings, tasks = [], todayMinutes =
         <div>{bestSessionLine}</div>
         <div>{peakLine}</div>
       </div>
+    </div>
+  );
+}
+
+const YT_VOLUME_KEY = 'yt_volume';
+const YT_SOUND_KEY = 'yt_sound_enabled';
+
+export function loadYtVolume() {
+  const v = Number(localStorage.getItem(YT_VOLUME_KEY));
+  return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : 80;
+}
+
+export function saveYtVolume(value) {
+  localStorage.setItem(YT_VOLUME_KEY, String(Math.min(100, Math.max(0, value))));
+}
+
+export function loadYtSoundEnabled() {
+  return localStorage.getItem(YT_SOUND_KEY) === '1';
+}
+
+export function saveYtSoundEnabled() {
+  localStorage.setItem(YT_SOUND_KEY, '1');
+}
+
+export function SoundEnablePill({ theme, onEnable }) {
+  return (
+    <button
+      type="button"
+      className="soundpill"
+      onClick={onEnable}
+      style={{
+        position: 'fixed',
+        left: 96,
+        bottom: 28,
+        zIndex: 20,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '10px 16px',
+        borderRadius: 999,
+        border: `1px solid ${theme.panelBorder}`,
+        background: theme.panelBg,
+        color: theme.text,
+        fontSize: 12.5,
+        fontFamily: 'inherit',
+        fontWeight: 500,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        boxShadow: '0 12px 32px -16px rgba(0,0,0,0.55)',
+        cursor: 'pointer',
+      }}
+    >
+      <Volume2 size={15} style={{ color: theme.accent }} />
+      click to enable sound
+    </button>
+  );
+}
+
+export function VolumeRailWidget({ theme, volume, onVolumeChange, muted, onToggleMute }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
+  return (
+    <div
+      ref={wrapRef}
+      className="railvolume"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {open && (
+        <div
+          className="railvolume-pop"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: 'calc(100% + 8px)',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+            padding: '12px 10px',
+            borderRadius: 14,
+            background: theme.panelBg,
+            border: `1px solid ${theme.panelBorder}`,
+            boxShadow: '0 16px 40px -20px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            zIndex: 60,
+          }}
+        >
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volume}
+            aria-label="ambience volume"
+            className="railvolume-slider"
+            onChange={(e) => onVolumeChange(Number(e.target.value))}
+          />
+          <span style={{ fontSize: 9.5, color: theme.textFaint, fontVariantNumeric: 'tabular-nums' }}>{volume}</span>
+        </div>
+      )}
+      <button
+        type="button"
+        className="railbtn"
+        title={muted ? 'unmute ambience' : 'mute ambience'}
+        aria-label={muted ? 'unmute ambience' : 'mute ambience'}
+        onClick={() => {
+          setOpen(true);
+          onToggleMute();
+        }}
+        style={{ color: muted ? theme.textFaint : theme.textDim }}
+      >
+        <span
+          className="railicon"
+          style={{
+            background: open ? theme.chipBg : 'transparent',
+            boxShadow: open ? `inset 0 0 0 1px ${theme.panelBorder}` : 'none',
+          }}
+        >
+          {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </span>
+        <span className="raillabel">volume</span>
+      </button>
     </div>
   );
 }

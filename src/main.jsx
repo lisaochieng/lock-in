@@ -13,10 +13,18 @@ import {
 } from 'lucide-react';
 import { themeFor, quotesFor } from './theme';
 import { spaces, categories } from './spaces';
-import { buildYouTubeEmbedUrl, extractVideoId } from './lib/search';
+import { buildYouTubeEmbedUrl, extractVideoId, applyYouTubeVolume } from './lib/search';
 import { calendarEventUrl } from './calendar';
 import AmbientBackground from './AmbientBackground';
 import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget } from './widgets';
+import {
+  VolumeRailWidget,
+  SoundEnablePill,
+  loadYtVolume,
+  saveYtVolume,
+  loadYtSoundEnabled,
+  saveYtSoundEnabled,
+} from './panels';
 import Landing from './Landing';
 import * as auth from './lib/auth';
 import * as db from './lib/db';
@@ -153,6 +161,10 @@ function App() {
   const [videoStart, setVideoStart] = useState(spaces.find((s) => s.id === activeSpace)?.startAt ?? 10);
   const [customVideoUrl, setCustomVideoUrl] = useState('');
   const [videoStarted, setVideoStarted] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => loadYtSoundEnabled());
+  const [ytVolume, setYtVolume] = useState(() => loadYtVolume());
+  const [ytWidgetMuted, setYtWidgetMuted] = useState(false);
+  const iframeRef = useRef(null);
 
   const completionHandled = useRef(false);
 
@@ -371,6 +383,36 @@ function App() {
   const selectSpace = useCallback((s) => setActiveSpace(s.id), [setActiveSpace]);
   const handleShowHero = useCallback(() => setShowHero(true), []);
 
+  const syncIframeVolume = useCallback(() => {
+    const muted = ytWidgetMuted || !soundEnabled;
+    const apply = () => applyYouTubeVolume(iframeRef.current, ytVolume, muted);
+    apply();
+    window.setTimeout(apply, 400);
+    window.setTimeout(apply, 1200);
+  }, [ytVolume, ytWidgetMuted, soundEnabled]);
+
+  const handleYtVolumeChange = useCallback((value) => {
+    setYtVolume(value);
+    saveYtVolume(value);
+    if (!ytWidgetMuted && soundEnabled) {
+      applyYouTubeVolume(iframeRef.current, value, false);
+    }
+  }, [ytWidgetMuted, soundEnabled]);
+
+  const toggleYtMute = useCallback(() => {
+    setYtWidgetMuted((prev) => {
+      const next = !prev;
+      applyYouTubeVolume(iframeRef.current, ytVolume, next || !soundEnabled);
+      return next;
+    });
+  }, [ytVolume, soundEnabled]);
+
+  const enableSound = useCallback(() => {
+    saveYtSoundEnabled();
+    setSoundEnabled(true);
+    setYtWidgetMuted(false);
+  }, []);
+
   const completedTasks = tasks.filter((task) => task.done).length;
   const todayMinutes = stats.days[todayKey()] || 0;
   const progressPercent = Math.min(100, Math.round((todayMinutes / settings.dailyGoal) * 100));
@@ -540,14 +582,21 @@ function App() {
   const openPanel = (k) => setPanel((p) => (p === k ? null : k));
   const panelTitle = { spaces: 'spaces', profile: 'profile', calendar: 'calendar' }[panel];
 
+  useEffect(() => {
+    if (!videoStarted || !iframeRef.current) return undefined;
+    applyYouTubeVolume(iframeRef.current, ytVolume, ytWidgetMuted || !soundEnabled);
+    return undefined;
+  }, [videoStarted, ytVolume, ytWidgetMuted, soundEnabled]);
+
   const loadCustomVideo = () => {
     const id = extractVideoId(customVideoUrl);
     if (id) { setActiveVideo(id); setVideoStart(0); setVideoStarted(true); }
   };
 
   const ambienceEmbedUrl = videoStarted && activeVideo
-    ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart })
+    ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart, muted: !soundEnabled })
     : '';
+  const showSoundPill = videoStarted && activeVideo && !soundEnabled;
 
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const widgetInit = {
@@ -583,10 +632,13 @@ function App() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
           <div style={{ position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}>
             <iframe
+              ref={iframeRef}
+              key={`${activeVideo}-${videoStart}-${soundEnabled ? 'sound' : 'muted'}`}
               title="peaceful study ambience"
               src={ambienceEmbedUrl}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               frameBorder={0}
+              onLoad={syncIframeVolume}
               style={{
                 position: 'absolute',
                 top: '50%',
@@ -599,12 +651,14 @@ function App() {
             />
             <div
               aria-hidden
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1 }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}
             />
           </div>
           <div style={{ position: 'absolute', inset: 0, background: theme.tone === 'light' ? 'rgba(240,245,248,0.30)' : 'rgba(8,12,16,0.42)', pointerEvents: 'none' }} />
         </div>
       )}
+
+      {showSoundPill && <SoundEnablePill theme={theme} onEnable={enableSound} />}
 
       {/* left rail */}
       <div className="rail" style={{ background: theme.railBg, borderRight: `1px solid ${theme.panelBorder}` }}>
@@ -615,6 +669,15 @@ function App() {
           <RailBtn theme={theme} icon={<CalendarDays size={20} />} label="calendar" active={panel === 'calendar'} onClick={() => openPanel('calendar')} />
         </div>
         <div className="raildiv" style={{ background: theme.panelBorder }} />
+        <div className="railgroup">
+          <VolumeRailWidget
+            theme={theme}
+            volume={ytVolume}
+            onVolumeChange={handleYtVolumeChange}
+            muted={ytWidgetMuted || !soundEnabled}
+            onToggleMute={toggleYtMute}
+          />
+        </div>
         <div className="railgroup">
           <RailBtn theme={theme} icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
           <RailBtn theme={theme} icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
