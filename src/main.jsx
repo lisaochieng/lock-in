@@ -12,7 +12,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { themeFor, quotesFor } from './theme';
-import { spaces, categories, extractYouTubeId } from './spaces';
+import { spaces, categories } from './spaces';
+import { buildYouTubeEmbedUrl, extractVideoId } from './lib/search';
 import { calendarEventUrl } from './calendar';
 import AmbientBackground from './AmbientBackground';
 import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget } from './widgets';
@@ -496,9 +497,11 @@ function App() {
   const panelTitle = { spaces: 'spaces', profile: 'profile', calendar: 'calendar' }[panel];
 
   const loadCustomVideo = () => {
-    const id = extractYouTubeId(customVideoUrl);
+    const id = extractVideoId(customVideoUrl);
     if (id) { setActiveVideo(id); setVideoStart(0); setVideoStarted(true); }
   };
+
+  const embedUrl = activeVideo ? buildYouTubeEmbedUrl(activeVideo) : '';
 
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const widgetInit = {
@@ -530,13 +533,12 @@ function App() {
     <div style={{ position: 'fixed', inset: 0, color: theme.text, fontFamily: "'Hanken Grotesk', sans-serif", overflow: 'hidden' }}>
       <AmbientBackground theme={theme} image={space.image} />
 
-      {videoStarted && activeVideo && (
+      {videoStarted && embedUrl && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
           <iframe
             title="peaceful study ambience"
-            src={`https://www.youtube.com/embed/${activeVideo}?autoplay=1&mute=0&controls=1&rel=0&playsinline=1&start=${videoStart}&origin=${encodeURIComponent(window.location.origin)}`}
+            src={embedUrl}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
             frameBorder={0}
             style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max(100vw, 177.78vh)', height: 'max(100vh, 56.25vw)' }}
           />

@@ -9,6 +9,7 @@ import {
   Copy, LogOut, Users, Flame, BarChart3,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth, fetchAllTimeStats, fetchSessionStats } from './lib/sessions';
+import { searchSpaces } from './lib/spaces';
 import { spaces } from './spaces';
 import {
   createRoom,
@@ -28,14 +29,38 @@ const SERIF = "'Cormorant Garamond', Georgia, serif";
 
 export function SpacesPanel({ theme, spaces, activeId, onSelect, query, setQuery, cat, setCat, categories, favorites = [], onToggleFavorite }) {
   const [favOnly, setFavOnly] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
 
-  const q = query.trim().toLowerCase();
-  const list = useMemo(() => spaces.filter((s) => {
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setSearchResults(null);
+      return undefined;
+    }
+    let active = true;
+    const timer = setTimeout(async () => {
+      const { data, error } = await searchSpaces(q);
+      if (!active) return;
+      if (!error && data?.length) {
+        const ids = new Set(data.map((row) => row.id));
+        setSearchResults(spaces.filter((s) => ids.has(s.id)));
+      } else {
+        const lower = q.toLowerCase();
+        setSearchResults(spaces.filter((s) => {
+          const text = `${s.name} ${s.tags || ''} ${s.mood} ${s.category}`.toLowerCase();
+          return text.includes(lower);
+        }));
+      }
+    }, 300);
+    return () => { active = false; clearTimeout(timer); };
+  }, [query, spaces]);
+
+  const source = searchResults ?? spaces;
+  const list = useMemo(() => source.filter((s) => {
     if (favOnly && !favorites.includes(s.id)) return false;
     if (cat !== 'all' && s.category !== cat) return false;
-    const text = `${s.name} ${s.tags || ''} ${s.mood} ${s.category}`.toLowerCase();
-    return text.includes(q);
-  }), [spaces, favOnly, favorites, cat, q]);
+    return true;
+  }), [source, favOnly, favorites, cat]);
 
   const tabBtn = (isFav, label, icon) => {
     const on = favOnly === isFav;

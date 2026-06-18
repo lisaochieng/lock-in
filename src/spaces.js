@@ -153,15 +153,4 @@ export const spaces = [
 
 export const categories = ['all', ...new Set(spaces.map((item) => item.category))];
 
-export function extractYouTubeId(value) {
-  const trimmed = value.trim();
-  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
-  try {
-    const url = new URL(trimmed);
-    if (url.hostname.includes('youtu.be')) return url.pathname.slice(1, 12);
-    if (url.searchParams.get('v')) return url.searchParams.get('v').slice(0, 11);
-    return url.pathname.match(/\/embed\/([a-zA-Z0-9_-]{11})/)?.[1] || '';
-  } catch {
-    return '';
-  }
-}
+export { extractVideoId as extractYouTubeId } from './lib/search';
