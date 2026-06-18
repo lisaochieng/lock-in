@@ -100,7 +100,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* top-right controls */
-.topctl { position: fixed; top: 20px; right: 26px; z-index: 50; display: flex; gap: 10px; }
+.railfooter-div { border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 8px 12px; }
+.topctl { position: fixed; top: 20px; right: 26px; z-index: 50; display: flex; align-items: center; gap: 10px; }
 .glassbtn { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transition: transform .15s ease; }
 .glassbtn:hover { transform: translateY(-1px); }
 

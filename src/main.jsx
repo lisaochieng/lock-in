@@ -20,6 +20,7 @@ import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget } fro
 import {
   VolumeRailWidget,
   SoundEnablePill,
+  RoomTopBar,
   loadYtVolume,
   saveYtVolume,
   loadYtSoundEnabled,
@@ -413,6 +414,11 @@ function App() {
     setYtWidgetMuted(false);
   }, []);
 
+  const handleLeaveRoom = useCallback(async () => {
+    if (currentRoom?.id && user?.id) await leaveRoom(currentRoom.id, user.id);
+    setRoom(null);
+  }, [currentRoom?.id, user?.id, setRoom]);
+
   const completedTasks = tasks.filter((task) => task.done).length;
   const todayMinutes = stats.days[todayKey()] || 0;
   const progressPercent = Math.min(100, Math.round((todayMinutes / settings.dailyGoal) * 100));
@@ -667,9 +673,6 @@ function App() {
           <RailBtn theme={theme} icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
           <RailBtn theme={theme} icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />
           <RailBtn theme={theme} icon={<CalendarDays size={20} />} label="calendar" active={panel === 'calendar'} onClick={() => openPanel('calendar')} />
-        </div>
-        <div className="raildiv" style={{ background: theme.panelBorder }} />
-        <div className="railgroup">
           <VolumeRailWidget
             theme={theme}
             volume={ytVolume}
@@ -677,15 +680,14 @@ function App() {
             muted={ytWidgetMuted || !soundEnabled}
             onToggleMute={toggleYtMute}
           />
-        </div>
-        <div className="railgroup">
           <RailBtn theme={theme} icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
           <RailBtn theme={theme} icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
           <RailBtn theme={theme} icon={<Target size={20} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
           <RailBtn theme={theme} icon={<BarChart3 size={20} />} label="progress" active={widgetsOpen.progress} onClick={() => toggleWidget('progress')} />
           <RailBtn theme={theme} icon={<Users size={20} />} label="room" active={widgetsOpen.room} onClick={() => toggleWidget('room')} />
         </div>
-        <div style={{ marginTop: 'auto' }}>
+        <div style={{ marginTop: 'auto', width: '100%' }}>
+          <div className="railfooter-div" />
           <RailBtn theme={theme} icon={<MoreHorizontal size={20} />} label={allWidgetsOpen ? 'hide all' : 'show all'} active={false} onClick={toggleAllWidgets} />
         </div>
       </div>
@@ -715,6 +717,9 @@ function App() {
 
       {/* top-right controls */}
       <div className="topctl">
+        {currentRoom && user && (
+          <RoomTopBar theme={theme} room={currentRoom} onLeave={handleLeaveRoom} />
+        )}
         <button className="glassbtn" onClick={() => setVideoStarted((p) => !p)} title="play / pause ambience" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
           {videoStarted ? <Pause size={18} /> : <Play size={18} />}
         </button>

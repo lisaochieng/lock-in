@@ -583,10 +583,6 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
     onRoomChange({ id: details.id, name: details.name });
   };
 
-  const handleLeave = () => {
-    onRoomChange(null);
-  };
-
   const copyInvite = () => {
     if (!inviteLink) return;
     navigator.clipboard?.writeText(inviteLink);
@@ -663,7 +659,7 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
           className="bigbtn"
           style={{ width: '100%', justifyContent: 'center', background: theme.accent, color: theme.accentInk, border: 'none' }}
         >
-          <Users size={16} /> create a room
+          create a room
         </button>
 
         <div>
@@ -698,10 +694,6 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: theme.text, lineHeight: 1.2 }}>
-        {room.name}
-      </div>
-
       <div style={{ fontSize: 11, color: theme.textFaint, textTransform: 'lowercase', letterSpacing: '.04em' }}>
         members · {sortedMembers.length}
       </div>
@@ -755,16 +747,60 @@ function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null
         {inviteLink}
       </div>
 
+      {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
+    </div>
+  );
+}
+
+export function RoomTopBar({ theme, room, onLeave }) {
+  return (
+    <div
+      className="roomtopbar"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 12px 8px 14px',
+        borderRadius: 15,
+        background: theme.panelBg,
+        border: `1px solid ${theme.panelBorder}`,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        minWidth: 0,
+        maxWidth: 280,
+      }}
+    >
+      <span style={{ display: 'flex', color: theme.accent, flexShrink: 0 }}><Users size={18} /></span>
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontFamily: SERIF,
+          fontSize: 15,
+          fontWeight: 600,
+          color: theme.text,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {room.name}
+      </span>
       <button
         type="button"
-        onClick={handleLeave}
-        className="ghostbtn"
-        style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
+        onClick={onLeave}
+        className="ghostbtn sm"
+        style={{
+          flexShrink: 0,
+          color: theme.textDim,
+          background: theme.chipBg,
+          border: `1px solid ${theme.chipBorder}`,
+          padding: '6px 10px',
+          fontSize: 12,
+        }}
       >
-        <LogOut size={15} /> leave room
+        <LogOut size={14} /> leave
       </button>
-
-      {error && <div style={{ fontSize: 12, color: '#e88' }}>{error}</div>}
     </div>
   );
 }
