@@ -72,15 +72,31 @@ a { color: inherit; text-decoration: none; }
 .raillogo { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
 .railgroup { display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center; }
 .raildiv { width: 34px; height: 1px; margin: 12px 0; }
-.railvolume { position: relative; width: 100%; display: flex; justify-content: center; }
-.railvolume-pop { pointer-events: auto; }
-.railvolume-slider {
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 28px;
-  height: 96px;
-  margin: 0;
-  accent-color: var(--accent, #c9a87c);
+.railfooter-div { border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 8px 12px; }
+.volumeslider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+  cursor: pointer;
+}
+.volumeslider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.volumeslider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
   cursor: pointer;
 }
 .soundpill { transition: filter .15s ease, transform .15s ease; }
@@ -100,7 +116,6 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* top-right controls */
-.railfooter-div { border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 8px 12px; }
 .topctl { position: fixed; top: 20px; right: 26px; z-index: 50; display: flex; align-items: center; gap: 10px; }
 .glassbtn { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transition: transform .15s ease; }
 .glassbtn:hover { transform: translateY(-1px); }

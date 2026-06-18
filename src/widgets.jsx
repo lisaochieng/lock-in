@@ -7,7 +7,7 @@
 import React, { lazy, Suspense, useState } from 'react';
 import {
   Timer, ListTodo, Target, BarChart3, Users, Play, Pause, RotateCcw,
-  Plus, Trash2, Check, GripVertical, X, Minus,
+  Plus, Trash2, Check, GripVertical, X, Minus, Volume2, VolumeX,
 } from 'lucide-react';
 
 const ProgressPanel = lazy(() => import('./panels').then((m) => ({ default: m.ProgressPanel })));
@@ -299,6 +299,47 @@ export function RoomWidget(props) {
           activeTaskTitle={activeTaskTitle}
         />
       </Suspense>
+    </Widget>
+  );
+}
+
+/* ------- Sound / volume ------- */
+export function VolumeWidget(props) {
+  const { theme, volume, onVolumeChange, muted, onToggleMute } = props;
+  return (
+    <Widget {...props} title="sound" icon={<Volume2 size={15} />} width={260}>
+      <div style={{ '--accent': theme.accent }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: 12.5, color: theme.textDim }}>volume</span>
+          <span style={{ fontSize: 14, color: theme.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{volume}</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={volume}
+          aria-label="ambience volume"
+          className="volumeslider"
+          onChange={(e) => onVolumeChange(Number(e.target.value))}
+        />
+        <button
+          type="button"
+          onClick={onToggleMute}
+          className="ghostbtn"
+          aria-label={muted ? 'unmute' : 'mute'}
+          style={{
+            width: '100%',
+            justifyContent: 'center',
+            marginTop: 14,
+            color: theme.text,
+            background: theme.chipBg,
+            border: `1px solid ${theme.chipBorder}`,
+          }}
+        >
+          {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          {muted ? 'unmute' : 'mute'}
+        </button>
+      </div>
     </Widget>
   );
 }

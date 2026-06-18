@@ -9,20 +9,15 @@ import { createRoot } from 'react-dom/client';
 import {
   LockKeyhole, LayoutGrid, UserCircle, CalendarDays, Timer, ListTodo,
   Target, BarChart3, Users, MoreHorizontal, Play, Pause, Link as LinkIcon,
-  ChevronRight,
+  ChevronRight, Volume2,
 } from 'lucide-react';
 import { themeFor, quotesFor } from './theme';
 import { spaces, categories } from './spaces';
-import { buildYouTubeEmbedUrl, extractVideoId, applyYouTubeVolume } from './lib/search';
+import { buildYouTubeEmbedUrl, extractVideoId, applyYouTubeVolume, postYouTubeCommand } from './lib/search';
 import { calendarEventUrl } from './calendar';
 import AmbientBackground from './AmbientBackground';
-import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget } from './widgets';
-import {
-  VolumeRailWidget,
-  RoomTopBar,
-  loadYtVolume,
-  saveYtVolume,
-} from './panels';
+import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget, VolumeWidget } from './widgets';
+import { RoomTopBar } from './panels';
 import Landing from './Landing';
 import * as auth from './lib/auth';
 import * as db from './lib/db';
@@ -34,6 +29,21 @@ const SERIF = "'Cormorant Garamond', Georgia, serif";
 const PENDING_ROOM_KEY = 'lockin-pending-room';
 const CURRENT_ROOM_KEY = 'lockin-current-room';
 const SUPABASE_WRITE_DEBOUNCE_MS = 600;
+const VOLUME_KEY = 'lockin_volume';
+
+const loadVolume = () => {
+  const stored = Number(localStorage.getItem(VOLUME_KEY));
+  if (Number.isFinite(stored)) return Math.min(100, Math.max(0, stored));
+  const legacy = Number(localStorage.getItem('yt_volume'));
+  if (Number.isFinite(legacy)) return Math.min(100, Math.max(0, legacy));
+  return 45;
+};
+
+const saveVolume = (value) => {
+  localStorage.setItem(VOLUME_KEY, String(Math.min(100, Math.max(0, value))));
+};
+
+const defaultWidgetsOpen = { timer: true, tasks: true, goals: true, progress: true, room: true, sound: false };
 
 const SpacesPanel = lazy(() => import('./panels').then((m) => ({ default: m.SpacesPanel })));
 const ProfilePanel = lazy(() => import('./panels').then((m) => ({ default: m.ProfilePanel })));
@@ -126,7 +136,7 @@ function App() {
   const [stats, setStats] = useState(() => load('lockin-stats', defaultStats()));
   const [favorites, setFavoritesState] = useState(() => load('lockin-favorites', []));
 
-  const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', { timer: true, tasks: true, goals: true, progress: true, room: true });
+  const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', defaultWidgetsOpen);
 
   const [mode, setMode] = useState('focus');
   const [secondsLeft, setSecondsLeft] = useState(settings.focus * 60);
@@ -146,7 +156,7 @@ function App() {
   const [customVideoUrl, setCustomVideoUrl] = useState('');
   const [videoStarted, setVideoStarted] = useState(false);
   const [ytReady, setYtReady] = useState(false);
-  const [ytVolume, setYtVolume] = useState(() => loadYtVolume());
+  const [volume, setVolume] = useState(() => loadVolume());
   const [ytWidgetMuted, setYtWidgetMuted] = useState(false);
   const iframeRef = useRef(null);
 
@@ -369,33 +379,29 @@ function App() {
   const handleShowHero = useCallback(() => setShowHero(true), []);
 
   const handleIframeLoad = useCallback(() => {
-    window.setTimeout(() => {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({
-          event: 'command',
-          func: 'setVolume',
-          args: [45],
-        }),
-        '*',
-      );
-    }, 1000);
-  }, []);
+    const apply = () => {
+      if (!iframeRef.current) return;
+      postYouTubeCommand(iframeRef.current, 'setVolume', [ytWidgetMuted ? 0 : volume]);
+    };
+    window.setTimeout(apply, 400);
+    window.setTimeout(apply, 1200);
+  }, [volume, ytWidgetMuted]);
 
-  const handleYtVolumeChange = useCallback((value) => {
-    setYtVolume(value);
-    saveYtVolume(value);
+  const handleVolumeChange = useCallback((value) => {
+    setVolume(value);
+    saveVolume(value);
     if (!ytWidgetMuted) {
-      applyYouTubeVolume(iframeRef.current, value, false);
+      postYouTubeCommand(iframeRef.current, 'setVolume', [value]);
     }
   }, [ytWidgetMuted]);
 
   const toggleYtMute = useCallback(() => {
     setYtWidgetMuted((prev) => {
       const next = !prev;
-      applyYouTubeVolume(iframeRef.current, ytVolume, next);
+      applyYouTubeVolume(iframeRef.current, volume, next);
       return next;
     });
-  }, [ytVolume]);
+  }, [volume]);
 
   const handleLeaveRoom = useCallback(async () => {
     if (currentRoom?.id && user?.id) await leaveRoom(currentRoom.id, user.id);
@@ -567,7 +573,7 @@ function App() {
     if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
   };
 
-  const widgetIds = ['timer', 'tasks', 'goals', 'progress', 'room'];
+  const widgetIds = ['timer', 'tasks', 'goals', 'progress', 'room', 'sound'];
   const allWidgetsOpen = widgetIds.every((id) => widgetsOpen[id]);
   const toggleWidget = (k) => { setWidgetsOpen((o) => ({ ...o, [k]: !o[k] })); if (!widgetsOpen[k]) raise(k); };
   const toggleAllWidgets = () => { const next = !allWidgetsOpen; setWidgetsOpen(Object.fromEntries(widgetIds.map((id) => [id, next]))); };
@@ -577,9 +583,9 @@ function App() {
 
   useEffect(() => {
     if (!videoStarted || !iframeRef.current) return undefined;
-    applyYouTubeVolume(iframeRef.current, ytVolume, ytWidgetMuted);
+    applyYouTubeVolume(iframeRef.current, volume, ytWidgetMuted);
     return undefined;
-  }, [videoStarted, ytVolume, ytWidgetMuted]);
+  }, [videoStarted, volume, ytWidgetMuted]);
 
   const loadCustomVideo = () => {
     const id = extractVideoId(customVideoUrl);
@@ -597,6 +603,7 @@ function App() {
     goals: { x: Math.min(800, W - 320), y: 132 },
     progress: { x: Math.max(440, W - 360), y: 392 },
     room: { x: Math.min(800, W - 320), y: 470 },
+    sound: { x: Math.min(470, W - 300), y: 470 },
   };
   const wProps = (k) => ({ theme, onClose: () => setWidgetsOpen((o) => ({ ...o, [k]: false })), init: widgetInit[k], z: zMap[k] || 40, onFocusZ: () => raise(k) });
 
@@ -617,7 +624,7 @@ function App() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, color: theme.text, fontFamily: "'Hanken Grotesk', sans-serif", overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, color: theme.text, fontFamily: "'Hanken Grotesk', sans-serif", overflow: 'hidden', '--accent': theme.accent }}>
       <AmbientBackground theme={theme} image={space.image} />
 
       {ambienceEmbedUrl && (
@@ -642,13 +649,9 @@ function App() {
           <RailBtn theme={theme} icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
           <RailBtn theme={theme} icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />
           <RailBtn theme={theme} icon={<CalendarDays size={20} />} label="calendar" active={panel === 'calendar'} onClick={() => openPanel('calendar')} />
-          <VolumeRailWidget
-            theme={theme}
-            volume={ytVolume}
-            onVolumeChange={handleYtVolumeChange}
-            muted={ytWidgetMuted || !ytReady}
-            onToggleMute={toggleYtMute}
-          />
+        </div>
+        <div className="railgroup">
+          <RailBtn theme={theme} icon={<Volume2 size={20} />} label="sound" active={widgetsOpen.sound} onClick={() => toggleWidget('sound')} />
           <RailBtn theme={theme} icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
           <RailBtn theme={theme} icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
           <RailBtn theme={theme} icon={<Target size={20} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
@@ -757,6 +760,15 @@ function App() {
           room={currentRoom}
           onRoomChange={setRoom}
           activeTaskTitle={activeTaskTitle}
+        />
+      )}
+      {widgetsOpen.sound && (
+        <VolumeWidget
+          {...wProps('sound')}
+          volume={volume}
+          onVolumeChange={handleVolumeChange}
+          muted={ytWidgetMuted || !ytReady}
+          onToggleMute={toggleYtMute}
         />
       )}
     </div>
