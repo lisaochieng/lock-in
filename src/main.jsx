@@ -692,7 +692,13 @@ function App() {
                 <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={selectSpace} cat={category} setCat={setCategory} favorites={favorites} onToggleFavorite={toggleFavorite} />
               )}
               {panel === 'profile' && (
-                <ProfilePanel theme={theme} user={user} onSignOut={handleSignOut} onShowHero={handleShowHero} />
+                <ProfilePanel
+                  theme={theme}
+                  user={user}
+                  onSignOut={handleSignOut}
+                  onShowHero={handleShowHero}
+                  onNameChange={(name) => setUser((u) => (u ? { ...u, name } : u))}
+                />
               )}
               {panel === 'calendar' && (
                 <CalendarPanel theme={theme} userId={user?.id} />

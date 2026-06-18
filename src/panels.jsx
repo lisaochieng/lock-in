@@ -7,10 +7,11 @@ import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
-  Volume2, VolumeX,
+  Volume2, VolumeX, Pencil,
 } from 'lucide-react';
 import { fetchSessionsByMonth, fetchCompletedTasksByMonth } from './lib/sessions';
-import { fetchProgressAnalysis, emptyProgressAnalysis, fetchUserProfileStats, formatMemberSince } from './lib/progress';
+import { fetchProgressAnalysis, emptyProgressAnalysis, fetchUserProfileStats } from './lib/progress';
+import { supabase } from './lib/supabase';
 import { searchSpaces } from './lib/spaces';
 import {
   createRoom,
@@ -189,49 +190,199 @@ function SpacesPanelImpl({ theme, spaces: allSpaces, activeId, onSelect, cat, se
   );
 }
 
-function ProfilePanelImpl({ theme, user, onSignOut, onShowHero }) {
+function nameInitials(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  if (parts.length === 1) {
+    const word = parts[0];
+    return word.length >= 2 ? word.slice(0, 2).toUpperCase() : word[0]?.toUpperCase() || '?';
+  }
+  return '?';
+}
+
+function ProfileStatSkeleton({ theme }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
+          <div style={{ height: 12, width: 96, borderRadius: 8, background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, animation: 'pulse 1.4s ease-in-out infinite' }} />
+          <div style={{ height: 12, width: 52, borderRadius: 8, background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, animation: 'pulse 1.4s ease-in-out infinite' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) {
   const [profileStats, setProfileStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    setDisplayName(user?.name || '');
+  }, [user?.name]);
 
   useEffect(() => {
     if (!user?.id) {
       setProfileStats(null);
+      setStatsLoading(false);
       return undefined;
     }
     let active = true;
-    fetchUserProfileStats(user.id).then(({ data }) => {
-      if (active) setProfileStats(data);
-    });
+    setStatsLoading(true);
+    fetchUserProfileStats(user.id)
+      .then(({ data }) => {
+        if (!active) return;
+        setProfileStats(data);
+        setStatsLoading(false);
+      })
+      .catch(() => {
+        if (active) setStatsLoading(false);
+      });
     return () => { active = false; };
   }, [user?.id]);
 
+  const saveName = async () => {
+    const trimmed = nameDraft.trim();
+    setEditingName(false);
+    if (!trimmed || !user?.id) {
+      setNameDraft(displayName);
+      return;
+    }
+    if (trimmed === displayName) return;
+
+    const { error } = await supabase.from('profiles').update({ name: trimmed }).eq('id', user.id);
+    if (!error) {
+      setDisplayName(trimmed);
+      onNameChange?.(trimmed);
+    } else {
+      setNameDraft(displayName);
+    }
+  };
+
+  const startEditName = () => {
+    setNameDraft(displayName);
+    setEditingName(true);
+    queueMicrotask(() => nameInputRef.current?.focus());
+  };
+
   if (user) {
-    const initial = (user.name || user.email || '?')[0].toUpperCase();
-    const sessionRows = [
-      ['focus hours', profileStats ? `${profileStats.totalFocusHours}h` : '—'],
-      ['sessions', profileStats ? profileStats.totalSessions : '—'],
-      ['current streak', profileStats ? `${profileStats.currentStreak} days` : '—'],
-      ['member since', profileStats?.memberSince || formatMemberSince(user.memberSince || user.created_at)],
-    ];
+    const initials = nameInitials(displayName);
+    const providerLabel = user.provider === 'google' ? 'google' : 'email';
+    const hasActivity = profileStats && (
+      profileStats.totalSessions > 0
+      || profileStats.totalTasksCompleted > 0
+      || profileStats.totalFocusHours > 0
+    );
+
+    const statRows = [];
+    if (profileStats?.memberSince) statRows.push(['member since', profileStats.memberSince]);
+    if (profileStats?.totalFocusHours > 0) statRows.push(['total focus', `${profileStats.totalFocusHours}h`]);
+    if (profileStats?.totalSessions > 0) statRows.push(['sessions', profileStats.totalSessions]);
+    if (profileStats?.totalTasksCompleted > 0) statRows.push(['tasks done', profileStats.totalTasksCompleted]);
+    if (profileStats?.longestStreak > 0) statRows.push(['best streak', `${profileStats.longestStreak} days`]);
+    if (profileStats?.currentStreak > 0) statRows.push(['current streak', `${profileStats.currentStreak} days`]);
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 22 }}>
-          <div style={{ width: 60, height: 60, borderRadius: '50%', background: `linear-gradient(150deg, ${theme.accent}, rgba(255,255,255,0.25))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 600, color: theme.accentInk, marginBottom: 16 }}>{initial}</div>
-          <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600, color: theme.text }}>{user.name}</div>
+          {user.avatar_url ? (
+            <img
+              src={user.avatar_url}
+              alt=""
+              style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', marginBottom: 16 }}
+            />
+          ) : (
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: theme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, color: theme.accentInk, marginBottom: 16 }}>
+              {initials}
+            </div>
+          )}
+          <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600, color: theme.text }}>{displayName}</div>
           <div style={{ fontSize: 13, color: theme.textDim, marginTop: 6 }}>{user.email}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, fontSize: 12, color: theme.textFaint }}>
-            <Sparkles size={15} /> {user.provider === 'google' ? 'signed in with Google' : 'email account'}
-          </div>
+          <span
+            style={{
+              display: 'inline-flex',
+              marginTop: 14,
+              padding: '4px 10px',
+              borderRadius: 999,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '.04em',
+              textTransform: 'lowercase',
+              color: theme.textFaint,
+              background: theme.panelBg,
+              border: `1px solid ${theme.chipBorder}`,
+            }}
+          >
+            {providerLabel}
+          </span>
         </div>
+
         <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 16 }}>
           <div style={{ fontSize: 11, color: theme.textFaint, marginBottom: 12, textTransform: 'lowercase', letterSpacing: '.04em' }}>your stats</div>
-          {sessionRows.map(([k, v], i) => (
-            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}>
-              <span style={{ fontSize: 13, color: theme.textDim }}>{k}</span>
-              <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{v}</span>
-            </div>
-          ))}
+          {statsLoading ? (
+            <ProfileStatSkeleton theme={theme} />
+          ) : !hasActivity ? (
+            <>
+              {profileStats?.memberSince && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+                  <span style={{ fontSize: 13, color: theme.textDim }}>member since</span>
+                  <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{profileStats.memberSince}</span>
+                </div>
+              )}
+              <div style={{ fontSize: 12.5, color: theme.textFaint, lineHeight: 1.5, marginTop: profileStats?.memberSince ? 8 : 0 }}>
+                start your first session to see stats
+              </div>
+            </>
+          ) : (
+            statRows.map(([k, v], i) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}>
+                <span style={{ fontSize: 13, color: theme.textDim }}>{k}</span>
+                <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{v}</span>
+              </div>
+            ))
+          )}
         </div>
-        <button onClick={onSignOut} className="ghostbtn" style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}><X size={15} /> sign out</button>
+
+        <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 16 }}>
+          <div style={{ fontSize: 11, color: theme.textFaint, marginBottom: 12, textTransform: 'lowercase', letterSpacing: '.04em' }}>account</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <span style={{ fontSize: 12.5, color: theme.textDim, flexShrink: 0 }}>edit name</span>
+            {editingName ? (
+              <input
+                ref={nameInputRef}
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); nameInputRef.current?.blur(); }
+                  if (e.key === 'Escape') { setNameDraft(displayName); setEditingName(false); }
+                }}
+                aria-label="edit name"
+                style={{ flex: 1, minWidth: 0, background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}
+              />
+            ) : (
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
+            )}
+            <button
+              type="button"
+              className="iconbtn"
+              onClick={editingName ? saveName : startEditName}
+              aria-label="edit name"
+              style={{ color: theme.textFaint, flexShrink: 0 }}
+            >
+              <Pencil size={14} />
+            </button>
+          </div>
+          <button onClick={onSignOut} className="ghostbtn" style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}>
+            <LogOut size={15} /> sign out
+          </button>
+        </div>
       </div>
     );
   }
