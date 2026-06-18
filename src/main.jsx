@@ -4,7 +4,7 @@
    claude.ai/design. Keeps persistence, YouTube ambience,
    calendar deep-links and auth.
    =========================================================== */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   LockKeyhole, LayoutGrid, UserCircle, CalendarDays, Timer, ListTodo,
@@ -17,7 +17,6 @@ import { buildYouTubeEmbedUrl, extractVideoId } from './lib/search';
 import { calendarEventUrl } from './calendar';
 import AmbientBackground from './AmbientBackground';
 import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget } from './widgets';
-import { SpacesPanel, ProfilePanel, CalendarPanel } from './panels';
 import Landing from './Landing';
 import * as auth from './lib/auth';
 import * as db from './lib/db';
@@ -28,6 +27,25 @@ import './styles.css';
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const PENDING_ROOM_KEY = 'lockin-pending-room';
 const CURRENT_ROOM_KEY = 'lockin-current-room';
+const SUPABASE_WRITE_DEBOUNCE_MS = 600;
+
+const SpacesPanel = lazy(() => import('./panels').then((m) => ({ default: m.SpacesPanel })));
+const ProfilePanel = lazy(() => import('./panels').then((m) => ({ default: m.ProfilePanel })));
+const CalendarPanel = lazy(() => import('./panels').then((m) => ({ default: m.CalendarPanel })));
+
+function PanelSkeleton() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        flex: 1,
+        minHeight: 0,
+        borderRadius: 14,
+        background: 'rgba(10,14,18,0.55)',
+      }}
+    />
+  );
+}
 
 const starterTasks = [
   { id: crypto.randomUUID(), title: "review today's lecture notes", done: false },
@@ -166,6 +184,7 @@ function App() {
   const goalsReadyRef = useRef(false);
   const taskUpdateTimers = useRef({});
   const roomAutoJoinRef = useRef(false);
+  const timerIntervalRef = useRef(null);
 
   // ---- session stats from Supabase ----
   const refreshStats = useCallback(async (uid) => {
@@ -291,7 +310,7 @@ function App() {
   // ---- goals / timer settings sync to Supabase (debounced) ----
   useEffect(() => {
     if (!user || !goalsReadyRef.current) return undefined;
-    const t = setTimeout(() => { db.saveGoals(user.id, settingsToGoals(settings)); }, 500);
+    const t = setTimeout(() => { db.saveGoals(user.id, settingsToGoals(settings)); }, SUPABASE_WRITE_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [settings, user?.id]);
 
@@ -324,7 +343,7 @@ function App() {
       taskUpdateTimers.current[t.id] = setTimeout(() => {
         db.updateTask(uid, t.id, { title: t.title, completed: t.done });
         delete taskUpdateTimers.current[t.id];
-      }, 500);
+      }, SUPABASE_WRITE_DEBOUNCE_MS);
     });
   };
 
@@ -336,8 +355,7 @@ function App() {
     });
   };
 
-  // ---- favorites toggle (heart a space) ----
-  const toggleFavorite = (spaceId) => {
+  const toggleFavorite = useCallback((spaceId) => {
     setFavoritesState((prev) => {
       const has = prev.includes(spaceId);
       const next = has ? prev.filter((id) => id !== spaceId) : [...prev, spaceId];
@@ -348,7 +366,10 @@ function App() {
       }
       return next;
     });
-  };
+  }, []);
+
+  const selectSpace = useCallback((s) => setActiveSpace(s.id), [setActiveSpace]);
+  const handleShowHero = useCallback(() => setShowHero(true), []);
 
   const completedTasks = tasks.filter((task) => task.done).length;
   const todayMinutes = stats.days[todayKey()] || 0;
@@ -378,10 +399,31 @@ function App() {
   }, [activeSpace]);
 
   useEffect(() => {
-    if (!isRunning) return undefined;
-    const id = window.setInterval(() => setSecondsLeft((value) => Math.max(0, value - 1)), 1000);
-    return () => window.clearInterval(id);
+    if (!isRunning) {
+      if (timerIntervalRef.current !== null) {
+        window.clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      return undefined;
+    }
+    timerIntervalRef.current = window.setInterval(
+      () => setSecondsLeft((value) => Math.max(0, value - 1)),
+      1000,
+    );
+    return () => {
+      if (timerIntervalRef.current !== null) {
+        window.clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
   }, [isRunning]);
+
+  useEffect(() => () => {
+    if (timerIntervalRef.current !== null) {
+      window.clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (secondsLeft > 0 || completionHandled.current) return;
@@ -503,7 +545,9 @@ function App() {
     if (id) { setActiveVideo(id); setVideoStart(0); setVideoStarted(true); }
   };
 
-  const embedUrl = activeVideo ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart }) : '';
+  const ambienceEmbedUrl = videoStarted && activeVideo
+    ? buildYouTubeEmbedUrl(activeVideo, { start: videoStart })
+    : '';
 
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const widgetInit = {
@@ -535,12 +579,12 @@ function App() {
     <div style={{ position: 'fixed', inset: 0, color: theme.text, fontFamily: "'Hanken Grotesk', sans-serif", overflow: 'hidden' }}>
       <AmbientBackground theme={theme} image={space.image} />
 
-      {videoStarted && embedUrl && (
+      {ambienceEmbedUrl && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
           <div style={{ position: 'relative', overflow: 'hidden', width: '100%', height: '100%' }}>
             <iframe
               title="peaceful study ambience"
-              src={embedUrl}
+              src={ambienceEmbedUrl}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               frameBorder={0}
               style={{
@@ -590,15 +634,19 @@ function App() {
             <span style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 600, letterSpacing: '.01em' }}>{panelTitle}</span>
             <button className="iconbtn" onClick={() => setPanel(null)} style={{ color: theme.textDim, transform: 'scaleX(-1)' }}><ChevronRight size={18} /></button>
           </div>
-          {panel === 'spaces' && (
-            <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={(s) => setActiveSpace(s.id)} cat={category} setCat={setCategory} favorites={favorites} onToggleFavorite={toggleFavorite} />
-          )}
-          {panel === 'profile' && (
-            <ProfilePanel theme={theme} user={user} onSignOut={handleSignOut} onShowHero={() => setShowHero(true)} />
-          )}
-          {panel === 'calendar' && (
-            <CalendarPanel theme={theme} userId={user?.id} />
-          )}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <Suspense fallback={<PanelSkeleton />}>
+              {panel === 'spaces' && (
+                <SpacesPanel theme={theme} spaces={spaces} categories={categories} activeId={space.id} onSelect={selectSpace} cat={category} setCat={setCategory} favorites={favorites} onToggleFavorite={toggleFavorite} />
+              )}
+              {panel === 'profile' && (
+                <ProfilePanel theme={theme} user={user} onSignOut={handleSignOut} onShowHero={handleShowHero} />
+              )}
+              {panel === 'calendar' && (
+                <CalendarPanel theme={theme} userId={user?.id} />
+              )}
+            </Suspense>
+          </div>
         </div>
       )}
 

@@ -3,7 +3,7 @@
    Glass styling from claude.ai/design; keeps the app's auth and
    calendar deep-link features.
    =========================================================== */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Sparkles, X, Check, Heart, Clock,
   Copy, LogOut, Users, Flame, BarChart3, Loader2, ArrowUp, ArrowDown,
@@ -27,7 +27,7 @@ import {
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 
-export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat, setCat, categories, favorites = [], onToggleFavorite }) {
+function SpacesPanelImpl({ theme, spaces: allSpaces, activeId, onSelect, cat, setCat, categories, favorites = [], onToggleFavorite }) {
   const [favOnly, setFavOnly] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -150,17 +150,28 @@ export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat,
                     border: `1.5px solid ${active ? theme.accent : theme.chipBorder}`,
                   }}
                 >
-                  <span style={{ position: 'relative', width: '100%', paddingTop: '58%', background: `linear-gradient(160deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.34)), url(${s.image}) center/cover` }}>
+                  <span style={{ position: 'relative', display: 'block', width: '100%', paddingTop: '58%', overflow: 'hidden' }}>
+                    <img
+                      src={s.image}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <span
+                      aria-hidden
+                      style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.34))', pointerEvents: 'none' }}
+                    />
                     <span
                       role="button" tabIndex={0} aria-label={fav ? 'remove from favorites' : 'add to favorites'} aria-pressed={fav}
                       onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(s.id); }}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(s.id); } }}
-                      style={{ position: 'absolute', top: 7, right: 7, width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,14,18,0.42)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', color: fav ? theme.accent : '#fff', cursor: 'pointer' }}
+                      style={{ position: 'absolute', top: 7, right: 7, width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,14,18,0.42)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', color: fav ? theme.accent : '#fff', cursor: 'pointer', zIndex: 1 }}
                     >
                       <Heart size={14} fill={fav ? theme.accent : 'none'} />
                     </span>
                     {active && (
-                      <span style={{ position: 'absolute', left: 7, bottom: 7, fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 6, background: theme.accent, color: theme.accentInk }}>active</span>
+                      <span style={{ position: 'absolute', left: 7, bottom: 7, fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 6, background: theme.accent, color: theme.accentInk, zIndex: 1 }}>active</span>
                     )}
                   </span>
                   <span style={{ padding: '8px 9px 10px' }}>
@@ -177,7 +188,7 @@ export function SpacesPanel({ theme, spaces: allSpaces, activeId, onSelect, cat,
   );
 }
 
-export function ProfilePanel({ theme, user, onSignOut, onShowHero }) {
+function ProfilePanelImpl({ theme, user, onSignOut, onShowHero }) {
   if (user) {
     const sessionRows = [['focus today', '1h 50m'], ['current streak', '3 days'], ['member since', 'jan 2026']];
     return (
@@ -246,7 +257,7 @@ const fmtClock = (iso) =>
 
 const sessionLabel = { focus: 'focus', shortBreak: 'short break', longBreak: 'long break' };
 
-export function CalendarPanel({ theme, userId }) {
+function CalendarPanelImpl({ theme, userId }) {
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [sessionsByDay, setSessionsByDay] = useState({});
@@ -438,7 +449,7 @@ const memberInitials = (member, userId) => {
   return name[0]?.toUpperCase() || '?';
 };
 
-export function RoomPanel({ theme, user, room, onRoomChange, activeTaskTitle = null }) {
+function RoomPanelImpl({ theme, user, room, onRoomChange, activeTaskTitle = null }) {
   const [members, setMembers] = useState([]);
   const [joinInput, setJoinInput] = useState('');
   const [view, setView] = useState('idle'); // idle | creating
@@ -817,7 +828,7 @@ function ProgressSkeleton({ theme }) {
   );
 }
 
-export function ProgressPanel({ theme, userId, settings, tasks = [], todayMinutes = 0, stats = null }) {
+function ProgressPanelImpl({ theme, userId, settings, tasks = [], todayMinutes = 0, stats = null }) {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [chartTip, setChartTip] = useState(null);
@@ -1028,3 +1039,9 @@ export function ProgressPanel({ theme, userId, settings, tasks = [], todayMinute
     </div>
   );
 }
+
+export const SpacesPanel = memo(SpacesPanelImpl);
+export const ProfilePanel = memo(ProfilePanelImpl);
+export const CalendarPanel = memo(CalendarPanelImpl);
+export const RoomPanel = memo(RoomPanelImpl);
+export const ProgressPanel = memo(ProgressPanelImpl);
