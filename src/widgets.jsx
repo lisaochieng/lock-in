@@ -7,7 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Timer, ListTodo, Target, BarChart3, Users, Play, Pause, RotateCcw,
-  Plus, Trash2, Check, GripVertical, X, Flame, Clock, Copy, Link as LinkIcon,
+  Plus, Trash2, Check, GripVertical, X, Flame, Clock,
 } from 'lucide-react';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -254,32 +254,19 @@ export function ProgressWidget(props) {
 }
 
 /* ------- Room ------- */
+import { RoomPanel } from './panels';
+
 export function RoomWidget(props) {
-  const { theme, roomName, setRoomName, roomLink, user } = props;
-  const [copied, setCopied] = useState(false);
-  const members = [user ? user.name : 'you', 'aria k.', 'noah p.'];
+  const { theme, user, room, onRoomChange, activeTaskTitle } = props;
   return (
-    <Widget {...props} title="room" icon={<Users size={15} />} width={290}>
-      <input
-        value={roomName} aria-label="room name"
-        onChange={(e) => setRoomName(e.target.value.toLowerCase())}
-        style={{ width: '100%', fontFamily: SERIF, fontSize: 20, fontWeight: 600, background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '8px 12px', marginBottom: 4, outline: 'none' }}
+    <Widget {...props} title="room" icon={<Users size={15} />} width={300}>
+      <RoomPanel
+        theme={theme}
+        user={user}
+        room={room}
+        onRoomChange={onRoomChange}
+        activeTaskTitle={activeTaskTitle}
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: '14px 0 16px' }}>
-        {members.map((m, i) => (
-          <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 26, height: 26, borderRadius: '50%', background: `linear-gradient(150deg, ${theme.accent}, rgba(255,255,255,0.25))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: theme.accentInk }}>{m[0].toUpperCase()}</span>
-            <span style={{ fontSize: 13, color: theme.text }}>{m}</span>
-            {i === 0 && <span style={{ fontSize: 10, color: theme.textFaint, marginLeft: 'auto' }}>you</span>}
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={() => { navigator.clipboard?.writeText(roomLink); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
-        className="ghostbtn" style={{ width: '100%', justifyContent: 'center', color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
-      >
-        {copied ? <Check size={15} /> : <Copy size={15} />}{copied ? 'invite link copied' : 'copy invite'}
-      </button>
     </Widget>
   );
 }
