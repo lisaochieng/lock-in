@@ -9,7 +9,7 @@ import { createRoot } from 'react-dom/client';
 import {
   LayoutGrid, UserCircle, CalendarDays, Timer, ListTodo,
   Target, BarChart3, Users, MoreHorizontal, Play, Pause, Link as LinkIcon,
-  ChevronRight, Volume2, EyeOff, PanelTop,
+  ChevronRight, Volume2, Eye, EyeOff,
 } from 'lucide-react';
 import { themeFor, quotesFor } from './theme';
 import { spaces, categories } from './spaces';
@@ -61,7 +61,16 @@ const saveVolume = (value) => {
   localStorage.setItem(VOLUME_KEY, String(Math.min(100, Math.max(0, value))));
 };
 
-const defaultWidgetsOpen = { timer: true, tasks: true, goals: false, progress: false, room: false, sound: false };
+const defaultOpenWidgets = { timer: true, tasks: true, goals: false, progress: false, sound: false };
+
+const hexToRgb = (hex) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r},${g},${b}`;
+};
+
+const defaultWidgetsOpen = { ...defaultOpenWidgets, room: false };
 
 const WIDGET_LAYOUT_KEY = 'lockin_widget_layout';
 const WIDGET_IDS = ['timer', 'tasks', 'goals', 'progress', 'room', 'sound'];
@@ -179,9 +188,28 @@ function usePersistentState(key, fallback) {
 }
 
 function RailBtn({ icon, label, active, onClick }) {
+  const [hover, setHover] = useState(false);
+  const iconColor = active
+    ? 'var(--accent)'
+    : (hover ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.4)');
+  const iconBg = active
+    ? 'rgba(var(--accent-rgb), 0.12)'
+    : (hover ? 'rgba(255,255,255,0.07)' : 'transparent');
+
   return (
-    <button onClick={onClick} className={`railbtn${active ? ' railbtn--active' : ''}`} title={label}>
-      <span className="railicon">{icon}</span>
+    <button
+      onClick={onClick}
+      className={`railbtn${active ? ' railbtn--active' : ''}`}
+      title={label}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <span
+        className="railicon"
+        style={{ color: iconColor, background: iconBg, borderRadius: active ? 8 : 13 }}
+      >
+        {icon}
+      </span>
       <span className="raillabel">{label}</span>
     </button>
   );
@@ -213,7 +241,23 @@ function App() {
   const [favorites, setFavoritesState] = useState(() => load('lockin-favorites', []));
 
   const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', defaultWidgetsOpen);
+  const [openWidgets, setOpenWidgets] = useState(() => {
+    const saved = load('lockin-widgets-open', defaultWidgetsOpen);
+    return {
+      timer: !!saved.timer,
+      tasks: !!saved.tasks,
+      goals: !!saved.goals,
+      progress: !!saved.progress,
+      sound: !!saved.sound,
+    };
+  });
+  const [allHidden, setAllHidden] = useState(false);
+  const savedWidgetState = useRef(null);
   const [widgetLayout, setWidgetLayout] = useState(() => loadWidgetLayout());
+
+  useEffect(() => {
+    setWidgetsOpen((o) => ({ ...o, ...openWidgets }));
+  }, [openWidgets, setWidgetsOpen]);
 
   useEffect(() => {
     WIDGET_IDS.forEach((id) => {
@@ -271,6 +315,11 @@ function App() {
   const quote = quotePool[qi % quotePool.length];
   // Show a quote from the new vibe the moment a space is selected.
   useEffect(() => { setQi(0); }, [activeSpace]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', theme.accent);
+    document.documentElement.style.setProperty('--accent-rgb', hexToRgb(theme.accent));
+  }, [theme.accent]);
 
   // ---- refs for stable access inside effects / timers ----
   const userRef = useRef(user);
@@ -763,8 +812,6 @@ function App() {
   };
 
   const navWidgetIds = ['timer', 'tasks', 'goals', 'progress', 'sound'];
-  const widgetsSnapshotRef = useRef(null);
-  const [allWidgetsHidden, setAllWidgetsHidden] = useState(false);
   const ensureWidgetPos = useCallback((id) => {
     setWidgetLayout((prev) => {
       if (isWidgetPosValid(prev[id])) return prev;
@@ -776,35 +823,46 @@ function App() {
   }, []);
 
   const toggleWidget = (k) => {
+    if (navWidgetIds.includes(k)) {
+      setOpenWidgets((o) => {
+        const opening = !o[k];
+        if (opening) {
+          ensureWidgetPos(k);
+          setAllHidden(false);
+        }
+        return { ...o, [k]: !o[k] };
+      });
+      return;
+    }
     const opening = !widgetsOpen[k];
     setWidgetsOpen((o) => ({ ...o, [k]: !o[k] }));
-    if (opening) {
-      ensureWidgetPos(k);
-      if (navWidgetIds.includes(k)) setAllWidgetsHidden(false);
-    }
+    if (opening) ensureWidgetPos(k);
   };
 
-  const toggleAllWidgets = () => {
-    if (allWidgetsHidden) {
-      const snapshot = widgetsSnapshotRef.current;
-      if (snapshot) {
-        setWidgetsOpen((o) => ({ ...o, ...snapshot }));
-        navWidgetIds.forEach((id) => {
-          if (snapshot[id]) ensureWidgetPos(id);
-        });
-      }
-      widgetsSnapshotRef.current = null;
-      setAllWidgetsHidden(false);
+  const hideAllWidgets = () => {
+    savedWidgetState.current = { ...openWidgets };
+    setOpenWidgets({
+      timer: false,
+      tasks: false,
+      goals: false,
+      progress: false,
+      sound: false,
+    });
+    setAllHidden(true);
+  };
+
+  const showAllWidgets = () => {
+    if (savedWidgetState.current) {
+      setOpenWidgets({ ...savedWidgetState.current });
+      navWidgetIds.forEach((id) => {
+        if (savedWidgetState.current[id]) ensureWidgetPos(id);
+      });
     } else {
-      widgetsSnapshotRef.current = Object.fromEntries(
-        navWidgetIds.map((id) => [id, widgetsOpen[id]]),
-      );
-      setWidgetsOpen((o) => ({
-        ...o,
-        ...Object.fromEntries(navWidgetIds.map((id) => [id, false])),
-      }));
-      setAllWidgetsHidden(true);
+      setOpenWidgets({ ...defaultOpenWidgets });
+      ensureWidgetPos('timer');
+      ensureWidgetPos('tasks');
     }
+    setAllHidden(false);
   };
 
   const setWidgetPos = useCallback((id, pos) => {
@@ -859,7 +917,13 @@ function App() {
 
   const wProps = (k) => ({
     theme,
-    onClose: () => setWidgetsOpen((o) => ({ ...o, [k]: false })),
+    onClose: () => {
+      if (navWidgetIds.includes(k)) {
+        setOpenWidgets((o) => ({ ...o, [k]: false }));
+      } else {
+        setWidgetsOpen((o) => ({ ...o, [k]: false }));
+      }
+    },
     pos: widgetLayout[k],
     onPosChange: (p) => setWidgetPos(k, p),
     z: draggingWidget === k ? WIDGET_Z_DRAG : WIDGET_Z_BASE,
@@ -962,19 +1026,19 @@ function App() {
           <RailBtn icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
           <RailBtn icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />
           <hr className="raildivider" />
-          <RailBtn icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
-          <RailBtn icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
-          <RailBtn icon={<Target size={20} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
-          <RailBtn icon={<BarChart3 size={20} />} label="progress" active={widgetsOpen.progress} onClick={() => toggleWidget('progress')} />
-          <RailBtn icon={<Volume2 size={20} />} label="sound" active={widgetsOpen.sound} onClick={() => toggleWidget('sound')} />
+          <RailBtn icon={<Timer size={20} />} label="timer" active={openWidgets.timer} onClick={() => toggleWidget('timer')} />
+          <RailBtn icon={<ListTodo size={20} />} label="tasks" active={openWidgets.tasks} onClick={() => toggleWidget('tasks')} />
+          <RailBtn icon={<Target size={20} />} label="goals" active={openWidgets.goals} onClick={() => toggleWidget('goals')} />
+          <RailBtn icon={<BarChart3 size={20} />} label="progress" active={openWidgets.progress} onClick={() => toggleWidget('progress')} />
+          <RailBtn icon={<Volume2 size={20} />} label="sound" active={openWidgets.sound} onClick={() => toggleWidget('sound')} />
         </div>
         <div style={{ marginTop: 'auto', width: '100%' }}>
           <hr className="raildivider" />
           <RailBtn
-            icon={allWidgetsHidden ? <PanelTop size={20} /> : <EyeOff size={20} />}
-            label={allWidgetsHidden ? 'show widgets' : 'hide widgets'}
+            icon={allHidden ? <Eye size={20} /> : <EyeOff size={20} />}
+            label={allHidden ? 'show widgets' : 'hide widgets'}
             active={false}
-            onClick={toggleAllWidgets}
+            onClick={() => (allHidden ? showAllWidgets() : hideAllWidgets())}
           />
           <RailBtn icon={<MoreHorizontal size={20} />} label="more" active={false} onClick={() => {}} />
         </div>
@@ -1057,7 +1121,7 @@ function App() {
       </div>
 
       {/* widgets */}
-      {widgetsOpen.timer && (
+      {openWidgets.timer && (
         <TimerWidget
           {...wProps('timer')}
           mode={mode}
@@ -1074,9 +1138,9 @@ function App() {
           sessionToast={timerToast}
         />
       )}
-      {widgetsOpen.tasks && <TasksWidget {...wProps('tasks')} tasks={tasks} setTasks={setTasks} />}
-      {widgetsOpen.goals && <GoalsWidget {...wProps('goals')} settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />}
-      {widgetsOpen.progress && (
+      {openWidgets.tasks && <TasksWidget {...wProps('tasks')} tasks={tasks} setTasks={setTasks} />}
+      {openWidgets.goals && <GoalsWidget {...wProps('goals')} settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />}
+      {openWidgets.progress && (
         <ProgressWidget
           {...wProps('progress')}
           user={user}
@@ -1097,7 +1161,7 @@ function App() {
           onActiveSpaceChange={setActiveSpace}
         />
       )}
-      {widgetsOpen.sound && (
+      {openWidgets.sound && (
         <VolumeWidget
           {...wProps('sound')}
           volume={volume}
