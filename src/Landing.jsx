@@ -1,11 +1,13 @@
 /* ===========================================================
-   lock in — hero background + auth card
-   Hero stays mounted; auth is a CSS-toggled overlay in main.jsx.
+   lock in — landing page
+   Warm beige / sage / mauve, Cormorant Garamond serif.
+   Faithful port of the claude.ai/design "lock-tf-in" Landing.html.
    =========================================================== */
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Mail, LockKeyhole, Sparkles, X } from 'lucide-react';
 import { spaces } from './spaces';
 
+// real ambience thumbnail per vibe for the spaces showcase
 const pick = (category) => spaces.find((s) => s.category === category);
 const moodBg = (category) => {
   const space = pick(category);
@@ -14,6 +16,7 @@ const moodBg = (category) => {
     : 'rgba(0,0,0,0.08)';
 };
 
+const HERO_BG = 'radial-gradient(circle at 50% 28%, #cdd3c0 0%, #8a9a86 52%, #55624f 100%)';
 const FEATURE_BG = 'radial-gradient(circle at 56% 38%, #c89b6a 0%, #7c5f3f 58%, #4f3d28 100%)';
 
 const MOODS = [
@@ -25,6 +28,7 @@ const MOODS = [
   { category: 'night city', title: 'midnight skyline', note: 'late grind, deep flow', tag: 'night city' },
 ];
 
+// Sage / cream auth palette so the overlay sits naturally on the hero.
 const AUTH = {
   ink: '#3b4034',
   dim: 'rgba(59,64,52,0.66)',
@@ -36,7 +40,7 @@ const AUTH = {
   border: 'rgba(85,98,79,0.22)',
 };
 
-export function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle }) {
+function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
@@ -47,7 +51,7 @@ export function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle 
     const t = window.setTimeout(() => {
       if (mode === 'signup') nameRef.current?.focus();
       else emailRef.current?.focus();
-    }, 120);
+    }, 80);
     return () => window.clearTimeout(t);
   }, [mode]);
 
@@ -80,51 +84,77 @@ export function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle 
     }
     if (res?.needsConfirmation) {
       setMessage({ type: 'info', text: 'check your email to confirm your account' });
+      return;
     }
+    // success: onAuthStateChange routes to the app.
   };
 
-  return (
-    <div className="auth-card" onClick={(e) => e.stopPropagation()}>
+  const card = (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: 'min(420px, 94vw)',
+        background: AUTH.card,
+        color: AUTH.ink,
+        borderRadius: 22,
+        padding: 28,
+        boxShadow: '0 30px 80px -24px rgba(20,26,18,0.55)',
+        position: 'relative',
+      }}
+    >
       {onClose && (
         <button
           type="button"
           onClick={onClose}
           aria-label="close"
-          className="auth-card__close"
+          style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: AUTH.faint, cursor: 'pointer', display: 'flex', padding: 4 }}
         >
           <X size={18} />
         </button>
       )}
 
-      <div className="auth-card__title">
+      <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, marginBottom: 4 }}>
         {mode === 'signup' ? 'create your account' : 'welcome back'}
       </div>
-      <div className="auth-card__sub">
+      <div style={{ fontSize: 13, color: AUTH.dim, marginBottom: 18 }}>
         {mode === 'signup' ? 'save your tasks, goals and streaks across devices.' : 'sign in to pick up where you left off.'}
       </div>
 
-      <div className="auth-card__tabs">
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {[['signin', 'sign in'], ['signup', 'sign up']].map(([key, label]) => (
           <button
             key={key}
             type="button"
             onClick={() => { setMode(key); setMessage(null); }}
-            className={mode === key ? 'auth-card__tab active' : 'auth-card__tab'}
+            style={{
+              flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              color: mode === key ? AUTH.accentInk : AUTH.ink,
+              background: mode === key ? AUTH.accent : 'transparent',
+              border: `1px solid ${mode === key ? 'transparent' : AUTH.border}`,
+            }}
           >
             {label}
           </button>
         ))}
       </div>
 
-      <button type="button" onClick={() => onGoogle?.()} className="auth-card__google">
+      <button
+        type="button"
+        onClick={() => onGoogle?.()}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '11px 0', borderRadius: 10, fontSize: 13.5, fontFamily: 'inherit', cursor: 'pointer',
+          color: AUTH.ink, background: AUTH.field, border: `1px solid ${AUTH.border}`,
+        }}
+      >
         <Sparkles size={16} /> continue with Google
       </button>
 
-      <div className="auth-card__or">
-        <span /> or <span />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: AUTH.faint, fontSize: 12, margin: '14px 0' }}>
+        <span style={{ flex: 1, height: 1, background: AUTH.border }} /> or <span style={{ flex: 1, height: 1, background: AUTH.border }} />
       </div>
 
-      <form onSubmit={submit} className="auth-card__form">
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {mode === 'signup' && (
           <input
             ref={nameRef}
@@ -135,8 +165,8 @@ export function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle 
             style={{ ...field, paddingLeft: 12 }}
           />
         )}
-        <label className="auth-card__field">
-          <span className="auth-card__icon"><Mail size={15} /></span>
+        <label style={{ position: 'relative', display: 'block' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><Mail size={15} /></span>
           <input
             ref={emailRef}
             value={form.email}
@@ -147,8 +177,8 @@ export function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle 
             style={field}
           />
         </label>
-        <label className="auth-card__field">
-          <span className="auth-card__icon"><LockKeyhole size={15} /></span>
+        <label style={{ position: 'relative', display: 'block' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><LockKeyhole size={15} /></span>
           <input
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -159,8 +189,8 @@ export function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle 
           />
         </label>
         {mode === 'signup' && (
-          <label className="auth-card__field">
-            <span className="auth-card__icon"><LockKeyhole size={15} /></span>
+          <label style={{ position: 'relative', display: 'block' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: AUTH.faint, display: 'flex' }}><LockKeyhole size={15} /></span>
             <input
               value={form.confirmPassword}
               onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
@@ -171,61 +201,70 @@ export function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle 
             />
           </label>
         )}
-        <button type="submit" disabled={busy} className="auth-card__submit">
+        <button
+          type="submit"
+          disabled={busy}
+          style={{
+            width: '100%', padding: '12px 0', borderRadius: 10, fontSize: 14, fontWeight: 500,
+            fontFamily: 'inherit', cursor: busy ? 'default' : 'pointer', color: AUTH.accentInk,
+            background: AUTH.accent, border: 'none', opacity: busy ? 0.7 : 1,
+          }}
+        >
           {busy ? 'one moment…' : (mode === 'signup' ? 'create account' : 'sign in')}
         </button>
       </form>
 
       {message && (
-        <div className={`auth-card__message${message.type === 'error' ? ' error' : ''}`}>
+        <div style={{ marginTop: 14, fontSize: 12.5, lineHeight: 1.5, color: message.type === 'error' ? '#9b4a3f' : AUTH.accent }}>
           {message.text}
         </div>
       )}
     </div>
   );
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+      }}
+    >
+      {card}
+    </div>
+  );
 }
 
-export function HeroBackground({ featuredSpace, heroQuote, onEnter, onOpenAuth }) {
+export default function Landing({
+  showAuth = null,
+  onAuthChange,
+  onEnter,
+  onSignIn,
+  onSignUp,
+  onGoogle,
+}) {
   const rootRef = useRef(null);
-  const bgImage = featuredSpace?.image;
+  const [overlayAuth, setOverlayAuth] = useState(null);
 
-  useEffect(() => {
-    const els = rootRef.current?.querySelectorAll('.reveal') || [];
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.classList.add('in');
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.12 });
-    els.forEach((el, i) => {
-      el.style.transitionDelay = `${(i % 3) * 0.09}s`;
-      io.observe(el);
-    });
-    return () => io.disconnect();
-  }, []);
+  const openAuth = (mode) => {
+    if (onAuthChange) onAuthChange(mode);
+    else setOverlayAuth(mode);
+  };
+
+  const closeAuth = () => {
+    if (onAuthChange) onAuthChange(null);
+    else setOverlayAuth(null);
+  };
+
+  const activeAuth = showAuth || overlayAuth;
 
   const enter = (e) => {
     if (e) e.preventDefault();
-    onEnter?.();
+    onEnter();
   };
 
   return (
-    <div className="hero-bg-inner landing" ref={rootRef}>
-      {bgImage && (
-        <div
-          className="hero-bg-image"
-          style={{ backgroundImage: `url(${bgImage})` }}
-          aria-hidden
-        />
-      )}
-      <div className="hero-bg-veil" aria-hidden />
-      <div className="hero-bg-brand" aria-hidden>
-        <div className="wordmark hero-bg-wordmark">lock <em>in</em></div>
-        {heroQuote && <p className="hero-bg-quote">{heroQuote}</p>}
-      </div>
-
+    <div className="landing" ref={rootRef}>
       <div className="flow" aria-hidden="true">
         <div className="blob b1" /><div className="blob b2" /><div className="blob b3" />
         <div className="blob b4" /><div className="blob b5" />
@@ -241,18 +280,15 @@ export function HeroBackground({ featuredSpace, heroQuote, onEnter, onOpenAuth }
           </div>
           <div className="wordmark">lock <em>in</em></div>
           <div className="nav-right">
-            <a href="#" onClick={(e) => { e.preventDefault(); onOpenAuth?.('signin'); }}>sign in</a>
-            <a href="#" onClick={(e) => { e.preventDefault(); onOpenAuth?.('signup'); }} className="pill">create account <ArrowRight size={14} /></a>
+            <a href="#" onClick={(e) => { e.preventDefault(); openAuth('signin'); }}>sign in</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); openAuth('signup'); }} className="pill">create account <ArrowRight size={14} /></a>
           </div>
         </nav>
 
         <header className="lhero">
           <div className="eyebrow">a calm place to <b>study</b></div>
           <div className="hero-media">
-            <div
-              className="hero-photo"
-              style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-            />
+            <div className="hero-photo" style={{ background: HERO_BG }} />
             <div className="veil" />
             <h1 className="hero-title">find your <em>quiet</em> hour</h1>
             <p className="hero-cap">an unhurried study space wrapped in ambient scenes, gentle sound, and just enough structure to keep you moving.</p>
@@ -312,8 +348,20 @@ export function HeroBackground({ featuredSpace, heroQuote, onEnter, onOpenAuth }
           <span>made for deep, quiet hours</span>
         </footer>
       </div>
+
+      {activeAuth && (
+        <AuthCard
+          mode={activeAuth}
+          setMode={(m) => {
+            if (onAuthChange) onAuthChange(m);
+            else setOverlayAuth(m);
+          }}
+          onClose={closeAuth}
+          onSignIn={onSignIn}
+          onSignUp={onSignUp}
+          onGoogle={onGoogle}
+        />
+      )}
     </div>
   );
 }
-
-export default HeroBackground;

@@ -18,7 +18,7 @@ import { calendarEventUrl } from './calendar';
 import AmbientBackground from './AmbientBackground';
 import { TimerWidget, TasksWidget, GoalsWidget, ProgressWidget, RoomWidget, VolumeWidget } from './widgets';
 import { RoomTopBar } from './panels';
-import { HeroBackground, AuthCard } from './Landing';
+import Landing from './Landing';
 import * as auth from './lib/auth';
 import * as db from './lib/db';
 import * as sessions from './lib/sessions';
@@ -199,6 +199,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [entered, setEntered] = usePersistentState('lockin-entered', false); // guest mode
+  const [showHero, setShowHero] = useState(() => Boolean(parseHeroAuth()));
   const [heroAuth, setHeroAuth] = useState(parseHeroAuth); // 'signin' | 'signup' | null
 
   const [calendarProvider, setCalendarProvider] = usePersistentState('lockin-calendar-provider', 'google');
@@ -312,6 +313,7 @@ function App() {
       const hydrated = await auth.hydrateUser(session?.user ?? null);
       setUser(hydrated);
       setAuthChecked(true);
+      setShowHero(false);
       setHeroAuth(null);
       clearHeroAuthUrl();
     });
@@ -462,24 +464,15 @@ function App() {
   }, []);
 
   const selectSpace = useCallback((s) => setActiveSpace(s.id), [setActiveSpace]);
-  const openAuth = useCallback((mode) => {
-    if (mode !== 'signin' && mode !== 'signup') return;
+  const navigateToHero = useCallback((auth = null) => {
+    const mode = auth === 'signin' || auth === 'signup' ? auth : null;
+    setShowHero(true);
     setHeroAuth(mode);
     const url = new URL(window.location.href);
-    url.searchParams.set('auth', mode);
+    if (mode) url.searchParams.set('auth', mode);
+    else url.searchParams.delete('auth');
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
-
-  const closeAuth = useCallback(() => {
-    setHeroAuth(null);
-    clearHeroAuthUrl();
-  }, []);
-
-  const showHeroPage = useCallback(() => {
-    setEntered(false);
-    setHeroAuth(null);
-    clearHeroAuthUrl();
-  }, [setEntered]);
 
   const handleIframeLoad = useCallback(() => {
     const apply = () => {
@@ -762,6 +755,7 @@ function App() {
 
   const enterGuest = () => {
     setEntered(true);
+    setShowHero(false);
     setHeroAuth(null);
     clearHeroAuthUrl();
     if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
@@ -842,42 +836,34 @@ function App() {
     onDragEnd: () => setDraggingWidget((w) => (w === k ? null : w)),
   });
 
-  // ---- routing: hero always mounted; app fades in when signed in or guest entered ----
-  const guestMode = entered;
+  if (!authChecked) {
+    return <div style={{ background: '#1a1a1a', width: '100vw', height: '100vh' }} />;
+  }
+
+  // ---- routing: signed-in users always get the app; guests see hero when requested ----
+  const guestMode = entered && !showHero;
   const wantApp = Boolean(user) || (!forceLanding && (guestMode || roomFromUrl));
-  const appVisible = wantApp && authChecked;
-  const heroHidden = appVisible;
-  const featuredSpace = spaces.find((s) => s.id === 'rainy-library') || spaces[0];
-  const heroQuotePool = quotesFor(featuredSpace.category);
-  const heroQuote = `“${heroQuotePool[0]}”`;
+  if (!wantApp) {
+    return (
+      <Landing
+        showAuth={heroAuth}
+        onAuthChange={(mode) => {
+          setHeroAuth(mode);
+          const url = new URL(window.location.href);
+          if (mode === 'signin' || mode === 'signup') url.searchParams.set('auth', mode);
+          else url.searchParams.delete('auth');
+          window.history.replaceState({}, '', url.pathname + url.search);
+        }}
+        onEnter={enterGuest}
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+        onGoogle={handleGoogle}
+      />
+    );
+  }
 
   return (
-    <>
-      <div className={`hero-bg${heroHidden ? ' hero-bg--hidden' : ''}`}>
-        <HeroBackground
-          featuredSpace={featuredSpace}
-          heroQuote={heroQuote}
-          onEnter={enterGuest}
-          onOpenAuth={openAuth}
-        />
-      </div>
-
-      <div className={`auth-overlay${heroAuth ? ' visible' : ''}`}>
-        <div className="auth-backdrop" onClick={closeAuth} aria-hidden />
-        <AuthCard
-          mode={heroAuth || 'signin'}
-          setMode={openAuth}
-          onClose={closeAuth}
-          onSignIn={handleSignIn}
-          onSignUp={handleSignUp}
-          onGoogle={handleGoogle}
-        />
-      </div>
-
-      <div
-        className={`main-app${appVisible ? ' visible' : ''}`}
-        style={{ color: theme.text, fontFamily: "'Hanken Grotesk', sans-serif", overflow: 'hidden', '--accent': theme.accent }}
-      >
+    <div style={{ position: 'fixed', inset: 0, color: theme.text, fontFamily: "'Hanken Grotesk', sans-serif", overflow: 'hidden', '--accent': theme.accent }}>
       <AmbientBackground theme={theme} image={space.image} />
 
       {ambienceEmbedUrl && (
@@ -904,7 +890,7 @@ function App() {
         {user ? (
           <div className="raillogo">lock in</div>
         ) : (
-          <button type="button" className="raillogo raillogo--clickable" onClick={showHeroPage}>
+          <button type="button" className="raillogo raillogo--clickable" onClick={() => navigateToHero(null)}>
             lock in
           </button>
         )}
@@ -942,7 +928,7 @@ function App() {
                   theme={theme}
                   user={user}
                   onSignOut={handleSignOut}
-                  onShowHero={openAuth}
+                  onShowHero={navigateToHero}
                   onNameChange={(name) => setUser((u) => (u ? { ...u, name } : u))}
                 />
               )}
@@ -1051,8 +1037,7 @@ function App() {
           onToggleMute={toggleYtMute}
         />
       )}
-      </div>
-    </>
+    </div>
   );
 }
 
