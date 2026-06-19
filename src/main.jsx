@@ -898,20 +898,53 @@ function App() {
       <AmbientBackground theme={theme} image={space.image} />
 
       {ambienceEmbedUrl && (
-        <div className="yt-wrapper">
-          <iframe
-            ref={iframeRef}
-            key={`${activeVideo}-${videoStart}-${ytReady ? 'sound' : 'muted'}`}
-            title="peaceful study ambience"
-            src={ambienceEmbedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            frameBorder={0}
-            onLoad={handleIframeLoad}
-          />
-          <div className="yt-shield" aria-hidden />
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+        >
+          <div style={{
+            position: 'absolute',
+            top: '-15%',
+            left: '-15%',
+            width: '130%',
+            height: '130%',
+            pointerEvents: 'none',
+          }}
+          >
+            <iframe
+              ref={iframeRef}
+              key={`${activeVideo}-${videoStart}-${ytReady ? 'sound' : 'muted'}`}
+              title="peaceful study ambience"
+              src={ambienceEmbedUrl}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                pointerEvents: 'none',
+                display: 'block',
+              }}
+              allow="autoplay; encrypted-media"
+              allowFullScreen={false}
+              tabIndex={-1}
+              sandbox="allow-scripts allow-same-origin"
+              onLoad={handleIframeLoad}
+            />
+          </div>
           <div
-            className="yt-tint"
-            style={{ background: theme.tone === 'light' ? 'rgba(240,245,248,0.30)' : 'rgba(8,12,16,0.42)' }}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1,
+              pointerEvents: 'all',
+              background: 'transparent',
+              cursor: 'default',
+            }}
           />
         </div>
       )}
@@ -997,12 +1030,12 @@ function App() {
 
       {/* title + quote */}
       <div className={`main-content${panel ? ' panel-open' : ''}`}>
-        <div key={`${activeSpace}-${qi}`} className="quote" style={{ color: theme.textDim }}>{`“${quote}”`}</div>
+        <div key={`${activeSpace}-${qi}`} className="quote">{`“${quote}”`}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
           <span style={{ color: theme.accent, display: 'flex' }}><LayoutGrid size={14} /></span>
-          <span style={{ fontSize: 13, color: theme.textDim, letterSpacing: '.06em' }}>{space.mood} · {space.category}</span>
+          <span className="space-meta" style={{ fontSize: 13, letterSpacing: '.06em' }}>{space.mood} · {space.category}</span>
         </div>
-        <h1 className="bigtitle" style={{ color: theme.text }}>{space.name}</h1>
+        <h1 className="bigtitle">{space.name}</h1>
       </div>
 
       {/* center play */}
