@@ -124,16 +124,18 @@ function SpacesPanelImpl({ theme, spaces: allSpaces, activeId, onSelect, cat, se
       </div>
 
       {/* category chips */}
-      <div className="category-tabs-row scroll">
-        {categories.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCat(c)}
-            className="category-tab"
-            style={{ color: cat === c ? theme.accentInk : theme.chipText, background: cat === c ? theme.accent : theme.chipBg, border: `1px solid ${cat === c ? 'transparent' : theme.chipBorder}` }}
-          >{c}</button>
-        ))}
+      <div className="category-tabs-wrapper" style={{ '--panel-bg': theme.panelBg }}>
+        <div className="category-tabs-row scroll">
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCat(c)}
+              className="category-tab"
+              style={{ color: cat === c ? theme.accentInk : theme.chipText, background: cat === c ? theme.accent : theme.chipBg, border: `1px solid ${cat === c ? 'transparent' : theme.chipBorder}` }}
+            >{c}</button>
+          ))}
+        </div>
       </div>
 
       {/* tiles */}
@@ -179,11 +181,19 @@ function SpacesPanelImpl({ theme, spaces: allSpaces, activeId, onSelect, cat, se
                       <Heart size={14} fill={fav ? theme.accent : 'none'} />
                     </span>
                     {active && (
-                      <span style={{ position: 'absolute', left: 7, bottom: 7, fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 6, background: theme.accent, color: theme.accentInk, zIndex: 1 }}>active</span>
+                      <span
+                        className="space-card-active"
+                        style={{
+                          background: `color-mix(in srgb, ${theme.accent} 70%, transparent)`,
+                          color: theme.accentInk,
+                        }}
+                      >
+                        active
+                      </span>
                     )}
                   </span>
                   <span style={{ padding: '8px 9px 10px' }}>
-                    <span style={{ display: 'block', fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{s.name}</span>
+                    <span className="space-card-name" title={s.name} style={{ color: theme.text }}>{s.name}</span>
                     <span className="scroll" style={{ display: 'block', fontSize: 10.5, color: theme.textFaint, marginTop: 2, whiteSpace: 'nowrap', overflowX: 'auto', overflowY: 'hidden' }}>{s.tags}</span>
                   </span>
                 </button>

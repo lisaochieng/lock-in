@@ -178,10 +178,10 @@ function usePersistentState(key, fallback) {
   return [value, setValue];
 }
 
-function RailBtn({ theme, icon, label, active, onClick }) {
+function RailBtn({ icon, label, active, onClick }) {
   return (
-    <button onClick={onClick} className="railbtn" title={label} style={{ color: active ? theme.accent : theme.textDim }}>
-      <span className="railicon" style={{ background: active ? theme.chipBg : 'transparent', boxShadow: active ? `inset 0 0 0 1px ${theme.panelBorder}` : 'none' }}>{icon}</span>
+    <button onClick={onClick} className={`railbtn${active ? ' railbtn--active' : ''}`} title={label}>
+      <span className="railicon">{icon}</span>
       <span className="raillabel">{label}</span>
     </button>
   );
@@ -259,6 +259,7 @@ function App() {
 
   // widget drag z-index (100 base, 200 while dragging)
   const [draggingWidget, setDraggingWidget] = useState(null);
+  const [panelSlideIn, setPanelSlideIn] = useState(false);
 
   // rotating quote, themed to the active space's vibe
   const [qi, setQi] = useState(0);
@@ -833,6 +834,15 @@ function App() {
   const panelTitle = { spaces: 'spaces', profile: 'profile', calendar: 'calendar' }[panel];
 
   useEffect(() => {
+    if (!panel) {
+      setPanelSlideIn(false);
+      return undefined;
+    }
+    const id = requestAnimationFrame(() => setPanelSlideIn(true));
+    return () => cancelAnimationFrame(id);
+  }, [panel]);
+
+  useEffect(() => {
     if (!videoStarted || !iframeRef.current) return undefined;
     applyYouTubeVolume(iframeRef.current, volume, ytWidgetMuted);
     return undefined;
@@ -916,31 +926,30 @@ function App() {
           </button>
         )}
         <div className="railgroup">
-          <RailBtn theme={theme} icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
-          <RailBtn theme={theme} icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />
+          <RailBtn icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
+          <RailBtn icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />
           <hr className="raildivider" />
-          <RailBtn theme={theme} icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
-          <RailBtn theme={theme} icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
-          <RailBtn theme={theme} icon={<Target size={20} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
-          <RailBtn theme={theme} icon={<BarChart3 size={20} />} label="progress" active={widgetsOpen.progress} onClick={() => toggleWidget('progress')} />
-          <RailBtn theme={theme} icon={<Volume2 size={20} />} label="sound" active={widgetsOpen.sound} onClick={() => toggleWidget('sound')} />
+          <RailBtn icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
+          <RailBtn icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
+          <RailBtn icon={<Target size={20} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
+          <RailBtn icon={<BarChart3 size={20} />} label="progress" active={widgetsOpen.progress} onClick={() => toggleWidget('progress')} />
+          <RailBtn icon={<Volume2 size={20} />} label="sound" active={widgetsOpen.sound} onClick={() => toggleWidget('sound')} />
         </div>
         <div style={{ marginTop: 'auto', width: '100%' }}>
           <hr className="raildivider" />
           <RailBtn
-            theme={theme}
             icon={allWidgetsHidden ? <PanelTop size={20} /> : <EyeOff size={20} />}
             label={allWidgetsHidden ? 'show widgets' : 'hide widgets'}
             active={false}
             onClick={toggleAllWidgets}
           />
-          <RailBtn theme={theme} icon={<MoreHorizontal size={20} />} label="more" active={false} onClick={() => {}} />
+          <RailBtn icon={<MoreHorizontal size={20} />} label="more" active={false} onClick={() => {}} />
         </div>
       </div>
 
       {/* flyout panel */}
       {panel && (
-        <div className="flyout" style={{ background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, color: theme.text }}>
+        <div className={`flyout side-panel${panelSlideIn ? ' open' : ''}`} style={{ background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, color: theme.text }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <span style={{ fontFamily: SERIF, fontSize: 23, fontWeight: 600, letterSpacing: '.01em' }}>{panelTitle}</span>
             <button className="iconbtn" onClick={() => setPanel(null)} style={{ color: theme.textDim, transform: 'scaleX(-1)' }}><ChevronRight size={18} /></button>
@@ -975,10 +984,10 @@ function App() {
         <button className="glassbtn" onClick={() => setVideoStarted((p) => !p)} title="play / pause ambience" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
           {videoStarted ? <Pause size={18} /> : <Play size={18} />}
         </button>
-        <button className="glassbtn" onClick={() => openPanel('calendar')} title="calendar" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, boxShadow: panel === 'calendar' ? `inset 0 0 0 1px ${theme.panelBorder}` : 'none' }}>
+        <button className={`glassbtn${panel === 'calendar' ? ' glassbtn--active' : ''}`} onClick={() => openPanel('calendar')} title="calendar" style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
           <CalendarDays size={18} />
         </button>
-        <button className="glassbtn" onClick={() => toggleWidget('room')} title="room" style={{ color: widgetsOpen.room ? theme.accent : theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, boxShadow: widgetsOpen.room ? `inset 0 0 0 1px ${theme.panelBorder}` : 'none' }}>
+        <button className={`glassbtn${widgetsOpen.room ? ' glassbtn--active' : ''}`} onClick={() => toggleWidget('room')} title="room" style={{ color: widgetsOpen.room ? theme.accent : theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
           <Users size={18} />
         </button>
         <button className="glassbtn" title="copy room link" onClick={() => roomLink && navigator.clipboard?.writeText(roomLink)} style={{ color: theme.text, background: theme.panelBg, border: `1px solid ${theme.panelBorder}`, opacity: roomLink ? 1 : 0.45 }} disabled={!roomLink}>
@@ -987,7 +996,7 @@ function App() {
       </div>
 
       {/* title + quote */}
-      <div className="titleblock" style={{ left: panel ? 392 : 104 }}>
+      <div className={`main-content${panel ? ' panel-open' : ''}`}>
         <div key={`${activeSpace}-${qi}`} className="quote" style={{ color: theme.textDim }}>{`“${quote}”`}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
           <span style={{ color: theme.accent, display: 'flex' }}><LayoutGrid size={14} /></span>
@@ -1005,7 +1014,7 @@ function App() {
       )}
 
       {/* youtube input */}
-      <div className="ytbar" style={{ background: theme.panelBg, border: `1px solid ${theme.panelBorder}` }}>
+      <div className="ytbar">
         <input
           value={customVideoUrl} placeholder="paste a YouTube ambience link" aria-label="YouTube ambience link"
           onChange={(e) => setCustomVideoUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && loadCustomVideo()}
