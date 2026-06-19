@@ -23,6 +23,13 @@ import * as auth from './lib/auth';
 import * as db from './lib/db';
 import * as sessions from './lib/sessions';
 import { joinRoom, getRoom, leaveRoom, roomInviteLink, isValidRoomId } from './lib/rooms';
+import {
+  preloadSounds,
+  playSessionComplete,
+  playBreakStart,
+  playBreakEnd,
+  playLastFiveSeconds,
+} from './lib/sounds';
 import './styles.css';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -222,12 +229,18 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount for persisted open widgets
   }, []);
 
-  const [mode, setMode] = useState('focus');
+  const [mode, setMode] = useState('focus'); // focus | short | long
   const [secondsLeft, setSecondsLeft] = useState(settings.focus * 60);
   const [isRunning, setIsRunning] = useState(false);
-  const [sessionCount, setSessionCount] = useState(0); // focus rounds completed today
-  const [timerToast, setTimerToast] = useState(false); // "focus session complete" notice
+  const [pomodoroCount, setPomodoroCount] = useState(0); // 0-3 within current cycle
+  const [isAutoRunning, setIsAutoRunning] = useState(false);
+  const [timerToast, setTimerToast] = useState(false);
   const toastTimerRef = useRef(null);
+  const pomodoroCountRef = useRef(0);
+  const autoStartRef = useRef(null);
+  const phaseHandledRef = useRef(false);
+
+  useEffect(() => { pomodoroCountRef.current = pomodoroCount; }, [pomodoroCount]);
 
   const [currentRoom, setCurrentRoom] = useState(() => load(CURRENT_ROOM_KEY, null));
   const setRoom = useCallback((room) => {
@@ -243,8 +256,6 @@ function App() {
   const [volume, setVolume] = useState(() => loadVolume());
   const [ytWidgetMuted, setYtWidgetMuted] = useState(false);
   const iframeRef = useRef(null);
-
-  const completionHandled = useRef(false);
 
   // widget drag z-index (100 base, 200 while dragging)
   const [draggingWidget, setDraggingWidget] = useState(null);
@@ -267,8 +278,6 @@ function App() {
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const activeSpaceRef = useRef(activeSpace);
   useEffect(() => { activeSpaceRef.current = activeSpace; }, [activeSpace]);
-  const sessionCountRef = useRef(sessionCount);
-  useEffect(() => { sessionCountRef.current = sessionCount; }, [sessionCount]);
   const goalsReadyRef = useRef(false);
   const taskUpdateTimers = useRef({});
   const roomAutoJoinRef = useRef(false);
@@ -319,7 +328,6 @@ function App() {
       setSettings(load('lockin-settings', defaultSettings));
       setFavoritesState(load('lockin-favorites', []));
       setStats(load('lockin-stats', defaultStats()));
-      setSessionCount(0);
       return undefined;
     }
     let active = true;
@@ -337,11 +345,6 @@ function App() {
       goalsReadyRef.current = true;
       setFavoritesState((favRes.data || []).map((r) => r.space_id));
       await refreshStats(user.id);
-
-      // Today's completed focus rounds (only focus sessions are logged).
-      const today = new Date();
-      const byMonth = await sessions.fetchSessionsByMonth(user.id, today.getFullYear(), today.getMonth() + 1);
-      if (active) setSessionCount((byMonth[today.getDate()] || []).length);
     })();
     return () => { active = false; };
   }, [user?.id, refreshStats]);
@@ -528,6 +531,66 @@ function App() {
   useEffect(() => { document.title = 'lock in'; }, []);
 
   useEffect(() => {
+    preloadSounds();
+  }, []);
+
+  const switchTo = useCallback((nextMode) => {
+    const minutes = nextMode === 'focus'
+      ? settings.focus
+      : nextMode === 'short'
+        ? settings.shortBreak
+        : settings.longBreak;
+    setMode(nextMode);
+    setSecondsLeft(minutes * 60);
+    phaseHandledRef.current = false;
+  }, [settings.focus, settings.shortBreak, settings.longBreak]);
+
+  const stopPomodoro = useCallback(() => {
+    if (autoStartRef.current) {
+      window.clearTimeout(autoStartRef.current);
+      autoStartRef.current = null;
+    }
+    setIsAutoRunning(false);
+    setPomodoroCount(0);
+    pomodoroCountRef.current = 0;
+    setMode('focus');
+    setSecondsLeft(settings.focus * 60);
+    setIsRunning(false);
+    phaseHandledRef.current = false;
+  }, [settings.focus]);
+
+  const resetPhase = useCallback(() => {
+    if (autoStartRef.current) {
+      window.clearTimeout(autoStartRef.current);
+      autoStartRef.current = null;
+    }
+    const minutes = mode === 'focus'
+      ? settings.focus
+      : mode === 'short'
+        ? settings.shortBreak
+        : settings.longBreak;
+    setSecondsLeft(minutes * 60);
+    setIsRunning(false);
+    phaseHandledRef.current = false;
+  }, [mode, settings.focus, settings.shortBreak, settings.longBreak]);
+
+  const toggleRunning = useCallback(() => {
+    setIsRunning((running) => {
+      if (!running) setIsAutoRunning(true);
+      return !running;
+    });
+  }, []);
+
+  const selectMode = useCallback((nextMode) => {
+    if (autoStartRef.current) {
+      window.clearTimeout(autoStartRef.current);
+      autoStartRef.current = null;
+    }
+    switchTo(nextMode);
+    setIsRunning(false);
+  }, [switchTo]);
+
+  useEffect(() => {
     const nextSpace = spaces.find((item) => item.id === activeSpace) || spaces[0];
     setActiveVideo(nextSpace.video);
     setVideoStart(nextSpace.startAt ?? 10);
@@ -546,10 +609,13 @@ function App() {
       }
       return undefined;
     }
-    timerIntervalRef.current = window.setInterval(
-      () => setSecondsLeft((value) => Math.max(0, value - 1)),
-      1000,
-    );
+    timerIntervalRef.current = window.setInterval(() => {
+      setSecondsLeft((value) => {
+        const next = Math.max(0, value - 1);
+        if (next > 0 && next <= 5) playLastFiveSeconds(next);
+        return next;
+      });
+    }, 1000);
     return () => {
       if (timerIntervalRef.current !== null) {
         window.clearInterval(timerIntervalRef.current);
@@ -563,13 +629,33 @@ function App() {
       window.clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
+    if (autoStartRef.current) {
+      window.clearTimeout(autoStartRef.current);
+      autoStartRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
-    if (secondsLeft > 0 || completionHandled.current) return;
-    completionHandled.current = true;
+    if (secondsLeft !== 0) {
+      phaseHandledRef.current = false;
+      return;
+    }
+    if (phaseHandledRef.current) return;
+    phaseHandledRef.current = true;
     setIsRunning(false);
+
+    if (!isAutoRunning) return;
+
+    const scheduleAutoStart = () => {
+      if (autoStartRef.current) window.clearTimeout(autoStartRef.current);
+      autoStartRef.current = window.setTimeout(() => {
+        autoStartRef.current = null;
+        setIsRunning(true);
+      }, 2000);
+    };
+
     if (mode === 'focus') {
+      playSessionComplete();
       const minutes = settings.focus;
       const u = userRef.current;
       if (u) {
@@ -592,31 +678,38 @@ function App() {
         }));
       }
 
-      // Completion toast for ~3s.
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
       setTimerToast(true);
       toastTimerRef.current = window.setTimeout(() => setTimerToast(false), 3000);
 
-      // Every 4th focus round suggests a long break, otherwise a short one.
-      const nextCount = sessionCountRef.current + 1;
-      setSessionCount(nextCount);
-      const longBreakDue = nextCount % 4 === 0;
-      setMode(longBreakDue ? 'longBreak' : 'shortBreak');
-      setSecondsLeft((longBreakDue ? settings.longBreak : settings.shortBreak) * 60);
-    } else {
-      setMode('focus');
-      setSecondsLeft(settings.focus * 60);
+      const nextCount = pomodoroCountRef.current + 1;
+      if (nextCount >= 4) {
+        pomodoroCountRef.current = 0;
+        setPomodoroCount(0);
+        switchTo('long');
+        playBreakStart();
+      } else {
+        pomodoroCountRef.current = nextCount;
+        setPomodoroCount(nextCount);
+        switchTo('short');
+        playBreakStart();
+      }
+      scheduleAutoStart();
+      return;
     }
-  }, [mode, secondsLeft, settings.focus, settings.shortBreak, settings.longBreak, todayMinutes, refreshStats]);
 
-  useEffect(() => { completionHandled.current = false; }, [secondsLeft]);
-
-  const selectMode = (nextMode) => {
-    const minutes = nextMode === 'focus' ? settings.focus : nextMode === 'shortBreak' ? settings.shortBreak : settings.longBreak;
-    setMode(nextMode);
-    setSecondsLeft(minutes * 60);
-    setIsRunning(false);
-  };
+    playBreakEnd();
+    switchTo('focus');
+    scheduleAutoStart();
+  }, [
+    secondsLeft,
+    mode,
+    isAutoRunning,
+    settings.focus,
+    switchTo,
+    todayMinutes,
+    refreshStats,
+  ]);
 
   // Auth handlers return a result object so the hero can show messages.
   const handleSignIn = async (email, password) => {
@@ -900,7 +993,21 @@ function App() {
 
       {/* widgets */}
       {widgetsOpen.timer && (
-        <TimerWidget {...wProps('timer')} mode={mode} selectMode={selectMode} secondsLeft={secondsLeft} settings={settings} setSettings={setSettings} setSecondsLeft={setSecondsLeft} isRunning={isRunning} setIsRunning={setIsRunning} sessionCount={sessionCount} sessionToast={timerToast} />
+        <TimerWidget
+          {...wProps('timer')}
+          mode={mode}
+          pomodoroCount={pomodoroCount}
+          isAutoRunning={isAutoRunning}
+          selectMode={selectMode}
+          secondsLeft={secondsLeft}
+          settings={settings}
+          setSettings={setSettings}
+          isRunning={isRunning}
+          onToggleRunning={toggleRunning}
+          onStop={stopPomodoro}
+          onResetPhase={resetPhase}
+          sessionToast={timerToast}
+        />
       )}
       {widgetsOpen.tasks && <TasksWidget {...wProps('tasks')} tasks={tasks} setTasks={setTasks} />}
       {widgetsOpen.goals && <GoalsWidget {...wProps('goals')} settings={settings} setSettings={setSettings} todayMinutes={todayMinutes} progressPercent={progressPercent} />}

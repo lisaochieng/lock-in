@@ -6,7 +6,7 @@
    =========================================================== */
 import React, { lazy, Suspense, useState } from 'react';
 import {
-  Timer, ListTodo, Target, BarChart3, Users, Play, Pause, RotateCcw,
+  Timer, ListTodo, Target, BarChart3, Users, Play, Pause, RotateCcw, Square,
   Plus, Trash2, Check, GripVertical, X, Minus, Volume2, VolumeX,
 } from 'lucide-react';
 
@@ -108,28 +108,53 @@ function formatTime(seconds) {
 }
 
 /* ------- Timer ------- */
+const MODE_LABELS = { focus: 'focus', short: 'short break', long: 'long break' };
+
 export function TimerWidget(props) {
-  const { theme, mode, selectMode, secondsLeft, settings, setSettings, setSecondsLeft, isRunning, setIsRunning, sessionCount = 0, sessionToast = false } = props;
-  const total = (mode === 'focus' ? settings.focus : mode === 'shortBreak' ? settings.shortBreak : settings.longBreak) * 60;
+  const {
+    theme,
+    mode,
+    pomodoroCount = 0,
+    selectMode,
+    secondsLeft,
+    settings,
+    setSettings,
+    isRunning,
+    onToggleRunning,
+    onStop,
+    onResetPhase,
+    sessionToast = false,
+  } = props;
+
+  const total = (mode === 'focus' ? settings.focus : mode === 'short' ? settings.shortBreak : settings.longBreak) * 60;
   const prog = total ? 1 - secondsLeft / total : 0;
   const R = 52;
   const C = 2 * Math.PI * R;
-  // start | resume (paused mid-round) | pause (running)
   const startLabel = isRunning ? 'pause' : (secondsLeft < total ? 'resume' : 'start');
-  const sessionInCycle = (sessionCount % 4) + 1; // 1..4
+  const sessionInCycle = pomodoroCount + 1;
 
   const setDuration = (key, value) => {
     const minutes = Math.max(1, Number(value) || 1);
     setSettings({ ...settings, [key]: minutes });
-    if (key === mode && !isRunning) setSecondsLeft(minutes * 60);
+    const modeKey = key === 'focus' ? 'focus' : key === 'shortBreak' ? 'short' : 'long';
+    if (modeKey === mode && !isRunning && onResetPhase) onResetPhase();
   };
 
-  const tabs = [['focus', 'focus'], ['shortBreak', 'short break'], ['longBreak', 'long break']];
+  const tabs = [['focus', 'focus'], ['short', 'short break'], ['long', 'long break']];
   const tab = ([key, label]) => (
     <button
-      key={key} onClick={() => selectMode(key)} className="segbtn"
-      style={{ color: mode === key ? theme.accentInk : theme.chipText, background: mode === key ? theme.accent : theme.chipBg, border: `1px solid ${mode === key ? 'transparent' : theme.chipBorder}` }}
-    >{label}</button>
+      key={key}
+      type="button"
+      onClick={() => selectMode(key)}
+      className="segbtn"
+      style={{
+        color: mode === key ? theme.accentInk : theme.chipText,
+        background: mode === key ? theme.accent : theme.chipBg,
+        border: `1px solid ${mode === key ? 'transparent' : theme.chipBorder}`,
+      }}
+    >
+      {label}
+    </button>
   );
 
   const durKeys = [['focus', 'focus'], ['shortBreak', 'short'], ['longBreak', 'long']];
@@ -157,24 +182,35 @@ export function TimerWidget(props) {
         </div>
       )}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>{tabs.map(tab)}</div>
-      <div style={{ position: 'relative', width: 168, height: 168, margin: '2px auto 14px' }}>
+      <div style={{ position: 'relative', width: 168, height: 168, margin: '2px auto 8px' }}>
         <svg width={168} height={168} style={{ transform: 'rotate(-90deg)' }}>
           <circle cx={84} cy={84} r={R} fill="none" stroke={theme.trackBg} strokeWidth={7} />
           <circle cx={84} cy={84} r={R} fill="none" stroke={theme.accent} strokeWidth={7} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * prog} style={{ transition: 'stroke-dashoffset .9s linear' }} />
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, fontWeight: 500, fontFamily: SERIF, fontVariantNumeric: 'tabular-nums' }}>{formatTime(secondsLeft)}</div>
       </div>
-      <div style={{ textAlign: 'center', fontSize: 11, color: theme.textFaint, marginBottom: 13, letterSpacing: '.03em' }}>
-        session {sessionInCycle} of 4 until long break
+      <div style={{ textAlign: 'center', fontSize: 12, color: theme.text, marginBottom: 4, letterSpacing: '.02em', textTransform: 'lowercase' }}>
+        {MODE_LABELS[mode] || 'focus'}
       </div>
-      <div style={{ display: 'flex', gap: 9, marginBottom: 15 }}>
-        <button onClick={() => setIsRunning((r) => !r)} className="primarybtn" style={{ flex: 1, background: theme.accent, color: theme.accentInk }}>
+      <div style={{ textAlign: 'center', fontSize: 11, color: theme.textFaint, marginBottom: 13, letterSpacing: '.03em' }}>
+        session {sessionInCycle} of 4
+      </div>
+      <div style={{ display: 'flex', gap: 9, marginBottom: 10 }}>
+        <button type="button" onClick={onToggleRunning} className="primarybtn" style={{ flex: 1, background: theme.accent, color: theme.accentInk }}>
           {isRunning ? <Pause size={16} /> : <Play size={16} />}{startLabel}
         </button>
-        <button onClick={() => selectMode(mode)} className="ghostbtn" style={{ color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}>
+        <button type="button" onClick={onResetPhase} className="ghostbtn" style={{ color: theme.text, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}>
           <RotateCcw size={16} /> reset
         </button>
       </div>
+      <button
+        type="button"
+        onClick={onStop}
+        className="ghostbtn"
+        style={{ width: '100%', justifyContent: 'center', marginBottom: 15, color: theme.textDim, background: theme.chipBg, border: `1px solid ${theme.chipBorder}` }}
+      >
+        <Square size={14} /> stop
+      </button>
       <div style={{ display: 'flex', gap: 8 }}>{durKeys.map(dur)}</div>
     </Widget>
   );
