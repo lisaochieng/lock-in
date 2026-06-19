@@ -762,6 +762,8 @@ function App() {
   };
 
   const navWidgetIds = ['timer', 'tasks', 'goals', 'progress', 'sound'];
+  const widgetsSnapshotRef = useRef(null);
+  const [allWidgetsHidden, setAllWidgetsHidden] = useState(false);
   const ensureWidgetPos = useCallback((id) => {
     setWidgetLayout((prev) => {
       if (isWidgetPosValid(prev[id])) return prev;
@@ -775,14 +777,33 @@ function App() {
   const toggleWidget = (k) => {
     const opening = !widgetsOpen[k];
     setWidgetsOpen((o) => ({ ...o, [k]: !o[k] }));
-    if (opening) ensureWidgetPos(k);
+    if (opening) {
+      ensureWidgetPos(k);
+      if (navWidgetIds.includes(k)) setAllWidgetsHidden(false);
+    }
   };
-  const showAllWidgets = () => {
-    setWidgetsOpen((o) => ({ ...o, ...Object.fromEntries(navWidgetIds.map((id) => [id, true])) }));
-    navWidgetIds.forEach((id) => ensureWidgetPos(id));
-  };
-  const hideAllWidgets = () => {
-    setWidgetsOpen((o) => ({ ...o, ...Object.fromEntries(navWidgetIds.map((id) => [id, false])) }));
+
+  const toggleAllWidgets = () => {
+    if (allWidgetsHidden) {
+      const snapshot = widgetsSnapshotRef.current;
+      if (snapshot) {
+        setWidgetsOpen((o) => ({ ...o, ...snapshot }));
+        navWidgetIds.forEach((id) => {
+          if (snapshot[id]) ensureWidgetPos(id);
+        });
+      }
+      widgetsSnapshotRef.current = null;
+      setAllWidgetsHidden(false);
+    } else {
+      widgetsSnapshotRef.current = Object.fromEntries(
+        navWidgetIds.map((id) => [id, widgetsOpen[id]]),
+      );
+      setWidgetsOpen((o) => ({
+        ...o,
+        ...Object.fromEntries(navWidgetIds.map((id) => [id, false])),
+      }));
+      setAllWidgetsHidden(true);
+    }
   };
 
   const setWidgetPos = useCallback((id, pos) => {
@@ -897,6 +918,7 @@ function App() {
         <div className="railgroup">
           <RailBtn theme={theme} icon={<LayoutGrid size={20} />} label="spaces" active={panel === 'spaces'} onClick={() => openPanel('spaces')} />
           <RailBtn theme={theme} icon={<UserCircle size={20} />} label="profile" active={panel === 'profile'} onClick={() => openPanel('profile')} />
+          <hr className="raildivider" />
           <RailBtn theme={theme} icon={<Timer size={20} />} label="timer" active={widgetsOpen.timer} onClick={() => toggleWidget('timer')} />
           <RailBtn theme={theme} icon={<ListTodo size={20} />} label="tasks" active={widgetsOpen.tasks} onClick={() => toggleWidget('tasks')} />
           <RailBtn theme={theme} icon={<Target size={20} />} label="goals" active={widgetsOpen.goals} onClick={() => toggleWidget('goals')} />
@@ -905,8 +927,13 @@ function App() {
         </div>
         <div style={{ marginTop: 'auto', width: '100%' }}>
           <hr className="raildivider" />
-          <RailBtn theme={theme} icon={<PanelTop size={20} />} label="show all" active={false} onClick={showAllWidgets} />
-          <RailBtn theme={theme} icon={<EyeOff size={20} />} label="hide all" active={false} onClick={hideAllWidgets} />
+          <RailBtn
+            theme={theme}
+            icon={allWidgetsHidden ? <PanelTop size={20} /> : <EyeOff size={20} />}
+            label={allWidgetsHidden ? 'show widgets' : 'hide widgets'}
+            active={false}
+            onClick={toggleAllWidgets}
+          />
           <RailBtn theme={theme} icon={<MoreHorizontal size={20} />} label="more" active={false} onClick={() => {}} />
         </div>
       </div>
