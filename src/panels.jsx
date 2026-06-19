@@ -295,7 +295,7 @@ function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) 
     if (profileStats?.currentStreak > 0) statRows.push(['current streak', `${profileStats.currentStreak} days`]);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="profile-panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 22 }}>
           {user.avatar_url ? (
             <img
@@ -308,8 +308,8 @@ function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) 
               {initials}
             </div>
           )}
-          <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600, color: theme.text }}>{displayName}</div>
-          <div style={{ fontSize: 13, color: theme.textDim, marginTop: 6 }}>{user.email}</div>
+          <div className="profile-panel__ellipsis" style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600, color: theme.text }}>{displayName}</div>
+          <div className="profile-panel__ellipsis" style={{ fontSize: 13, color: theme.textDim, marginTop: 6 }}>{user.email}</div>
           <span
             style={{
               display: 'inline-flex',
@@ -336,9 +336,9 @@ function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) 
           ) : !hasActivity ? (
             <>
               {profileStats?.memberSince && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                  <span style={{ fontSize: 13, color: theme.textDim }}>member since</span>
-                  <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{profileStats.memberSince}</span>
+                <div className="profile-stat-row">
+                  <span className="profile-stat-row__label" style={{ color: theme.textDim }}>member since</span>
+                  <span className="profile-stat-row__value" style={{ color: theme.text }}>{profileStats.memberSince}</span>
                 </div>
               )}
               <div style={{ fontSize: 12.5, color: theme.textFaint, lineHeight: 1.5, marginTop: profileStats?.memberSince ? 8 : 0 }}>
@@ -347,9 +347,13 @@ function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) 
             </>
           ) : (
             statRows.map(([k, v], i) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}>
-                <span style={{ fontSize: 13, color: theme.textDim }}>{k}</span>
-                <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{v}</span>
+              <div
+                key={k}
+                className="profile-stat-row"
+                style={{ borderTop: i ? `1px solid ${theme.chipBorder}` : 'none' }}
+              >
+                <span className="profile-stat-row__label" style={{ color: theme.textDim }}>{k}</span>
+                <span className="profile-stat-row__value" style={{ color: theme.text }}>{v}</span>
               </div>
             ))
           )}
@@ -373,7 +377,7 @@ function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) 
                 style={{ flex: 1, minWidth: 0, background: theme.fieldBg, border: `1px solid ${theme.fieldBorder}`, color: theme.text, borderRadius: 10, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}
               />
             ) : (
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
+              <span className="profile-panel__ellipsis" style={{ flex: 1, minWidth: 0, fontSize: 13, color: theme.text }}>{displayName}</span>
             )}
             <button
               type="button"
@@ -394,7 +398,7 @@ function ProfilePanelImpl({ theme, user, onSignOut, onShowHero, onNameChange }) 
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="profile-panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, borderRadius: 18, padding: 22 }}>
         <div style={{ width: 52, height: 52, borderRadius: '50%', background: theme.chipBg, border: `1px solid ${theme.chipBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent, marginBottom: 16 }}>
           <Sparkles size={22} />
