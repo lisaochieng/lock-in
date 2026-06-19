@@ -227,7 +227,7 @@ function AuthCard({ mode, setMode, onClose, onSignIn, onSignUp, onGoogle }) {
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        padding: 20, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
       }}
     >
       {card}
@@ -257,6 +257,23 @@ export default function Landing({
   };
 
   const activeAuth = showAuth || overlayAuth;
+
+  useEffect(() => {
+    const els = rootRef.current?.querySelectorAll('.reveal') || [];
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    els.forEach((el, i) => {
+      el.style.transitionDelay = `${(i % 3) * 0.09}s`;
+      io.observe(el);
+    });
+    return () => io.disconnect();
+  }, []);
 
   const enter = (e) => {
     if (e) e.preventDefault();
