@@ -46,12 +46,14 @@ const AMBIENCE_BAR_HEIGHT = 70;
 
 function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, onDragStart, onDragEnd, width = 300, z = 100, children }) {
   const clampPos = (x, y) => {
-    const maxY = window.innerHeight - AMBIENCE_BAR_HEIGHT - 50;
-    const H = window.innerHeight;
-    const W = window.innerWidth;
+    const minX = 100;
+    const minY = 0;
+    const widgetHeight = 280;
+    const maxX = window.innerWidth - width;
+    const maxY = window.innerHeight - widgetHeight - AMBIENCE_BAR_HEIGHT;
     return {
-      x: Math.min(Math.max(80, x), W - 320),
-      y: Math.min(Math.max(100, y), Math.min(H - 300, maxY)),
+      x: Math.max(minX, Math.min(x, maxX)),
+      y: Math.max(minY, Math.min(y, maxY)),
     };
   };
 
@@ -60,9 +62,8 @@ function Widget({ theme, title, icon, onClose, init, pos: posProp, onPosChange, 
   const pos = posProp ?? localPos;
 
   const commitPos = (p) => {
-    const c = clampPos(p.x, p.y);
-    if (onPosChange) onPosChange(c);
-    else setLocalPos(c);
+    if (onPosChange) onPosChange(p);
+    else setLocalPos(clampPos(p.x, p.y));
   };
 
   const startDrag = (e) => {

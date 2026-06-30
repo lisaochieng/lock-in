@@ -78,29 +78,33 @@ const AMBIENCE_BAR_HEIGHT = 70;
 const WIDGET_Z_BASE = 100;
 const WIDGET_Z_DRAG = 200;
 
-const clampWidgetPos = (x, y) => {
+const SIDEBAR_MIN_X = 100;
+const DEFAULT_WIDGET_WIDTH = 300;
+const DEFAULT_WIDGET_HEIGHT = 280;
+
+const clampWidgetPos = (x, y, widgetWidth = DEFAULT_WIDGET_WIDTH, widgetHeight = DEFAULT_WIDGET_HEIGHT) => {
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
   const H = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const maxY = Math.min(H - 300, H - AMBIENCE_BAR_HEIGHT - 50);
+  const minX = SIDEBAR_MIN_X;
+  const minY = 0;
+  const maxX = W - widgetWidth;
+  const maxY = H - widgetHeight - AMBIENCE_BAR_HEIGHT;
   return {
-    x: Math.min(Math.max(80, x), W - 320),
-    y: Math.min(Math.max(100, y), maxY),
+    x: Math.max(minX, Math.min(x, maxX)),
+    y: Math.max(minY, Math.min(y, maxY)),
   };
 };
 
 const defaultWidgetLayout = () => {
   const W = typeof window !== 'undefined' ? window.innerWidth : 1280;
-  const H = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const y = (val) => Math.min(val, H - 300);
-  const x = (val) => Math.min(val, W - 320);
   return {
-    timer: clampWidgetPos(x(W - 760), y(120)),
-    tasks: clampWidgetPos(x(W - 380), y(120)),
-    goals: clampWidgetPos(x(W - 760), y(420)),
-    progress: clampWidgetPos(x(W - 380), y(120)),
-    room: clampWidgetPos(x(W - 380), y(120)),
-    sound: clampWidgetPos(x(80), y(120)),
-    calendar: clampWidgetPos(x(80), y(120)),
+    timer: clampWidgetPos(W - 760, 120),
+    tasks: clampWidgetPos(W - 380, 120),
+    goals: clampWidgetPos(W - 760, 420),
+    progress: clampWidgetPos(W - 380, 120),
+    room: clampWidgetPos(W - 380, 120),
+    sound: clampWidgetPos(SIDEBAR_MIN_X, 120),
+    calendar: clampWidgetPos(SIDEBAR_MIN_X, 120),
   };
 };
 
