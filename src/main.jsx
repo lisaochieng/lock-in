@@ -538,13 +538,22 @@ function App() {
     window.setTimeout(apply, 1200);
   }, [volume, ytWidgetMuted]);
 
-  const handleVolumeChange = useCallback((value) => {
+  const applyVolumeToIframe = useCallback((val) => {
+    const iframe = iframeRef.current ?? document.querySelector('#yt-background');
+    if (!iframe?.contentWindow) return;
+    postYouTubeCommand(iframe, 'unMute', []);
+    postYouTubeCommand(iframe, 'setVolume', [val]);
+  }, []);
+
+  const handleVolumeInput = useCallback((value) => {
     setVolume(value);
+    applyVolumeToIframe(value);
+    if (value > 0) setYtWidgetMuted(false);
+  }, [applyVolumeToIframe]);
+
+  const handleVolumeChange = useCallback((value) => {
     saveVolume(value);
-    if (!ytWidgetMuted) {
-      postYouTubeCommand(iframeRef.current, 'setVolume', [value]);
-    }
-  }, [ytWidgetMuted]);
+  }, []);
 
   const toggleYtMute = useCallback(() => {
     setYtWidgetMuted((prev) => {
@@ -989,6 +998,7 @@ function App() {
           >
             <iframe
               ref={iframeRef}
+              id="yt-background"
               key={`${activeVideo}-${videoStart}-${ytReady ? 'sound' : 'muted'}`}
               title="peaceful study ambience"
               src={ambienceEmbedUrl}
@@ -1174,6 +1184,7 @@ function App() {
         <VolumeWidget
           {...wProps('sound')}
           volume={volume}
+          onVolumeInput={handleVolumeInput}
           onVolumeChange={handleVolumeChange}
           muted={ytWidgetMuted || !ytReady}
           onToggleMute={toggleYtMute}

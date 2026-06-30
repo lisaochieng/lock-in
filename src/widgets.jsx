@@ -362,7 +362,7 @@ export function RoomWidget(props) {
 
 /* ------- Sound / volume ------- */
 export function VolumeWidget(props) {
-  const { theme, volume, onVolumeChange, muted, onToggleMute } = props;
+  const { theme, volume, onVolumeInput, onVolumeChange, muted, onToggleMute } = props;
   return (
     <Widget {...props} title="sound" icon={<Volume2 size={15} />} width={260}>
       <div style={{ '--accent': theme.accent }}>
@@ -377,6 +377,7 @@ export function VolumeWidget(props) {
           value={volume}
           aria-label="ambience volume"
           className="volumeslider"
+          onInput={(e) => onVolumeInput(Number(e.target.value))}
           onChange={(e) => onVolumeChange(Number(e.target.value))}
         />
         <button
