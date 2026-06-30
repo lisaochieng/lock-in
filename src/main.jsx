@@ -528,6 +528,7 @@ function App() {
     const apply = () => {
       if (!iframeRef.current) return;
       postYouTubeCommand(iframeRef.current, 'setVolume', [ytWidgetMuted ? 0 : volume]);
+      postYouTubeCommand(iframeRef.current, 'setPlaybackQuality', ['hd1080']);
     };
     window.setTimeout(apply, 400);
     window.setTimeout(apply, 1200);
@@ -977,6 +978,8 @@ function App() {
             left: '-15%',
             width: '130%',
             height: '130%',
+            minWidth: 1920,
+            minHeight: 1080,
             pointerEvents: 'none',
           }}
           >
@@ -988,6 +991,8 @@ function App() {
               style={{
                 width: '100%',
                 height: '100%',
+                minWidth: 1920,
+                minHeight: 1080,
                 border: 'none',
                 pointerEvents: 'none',
                 display: 'block',
