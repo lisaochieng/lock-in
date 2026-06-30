@@ -8,7 +8,7 @@ import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useStat
 import { createRoot } from 'react-dom/client';
 import {
   LayoutGrid, UserCircle, CalendarDays, Timer, ListTodo,
-  Target, BarChart3, Users, MoreHorizontal, Play, Pause, Link as LinkIcon,
+  Target, BarChart3, Users, Play, Pause, Link as LinkIcon,
   ChevronRight, Volume2, Eye, EyeOff,
 } from 'lucide-react';
 import { themeFor, quotesFor } from './theme';
@@ -60,6 +60,8 @@ const loadVolume = () => {
 const saveVolume = (value) => {
   localStorage.setItem(VOLUME_KEY, String(Math.min(100, Math.max(0, value))));
 };
+
+const WIDGET_KEYS = ['timer', 'tasks', 'goals', 'progress', 'sound'];
 
 const defaultOpenWidgets = { timer: true, tasks: true, goals: false, progress: false, sound: false };
 
@@ -247,16 +249,10 @@ function App() {
   const [widgetsOpen, setWidgetsOpen] = usePersistentState('lockin-widgets-open', defaultWidgetsOpen);
   const [openWidgets, setOpenWidgets] = useState(() => {
     const saved = load('lockin-widgets-open', defaultWidgetsOpen);
-    return {
-      timer: !!saved.timer,
-      tasks: !!saved.tasks,
-      goals: !!saved.goals,
-      progress: !!saved.progress,
-      sound: !!saved.sound,
-    };
+    return Object.fromEntries(WIDGET_KEYS.map((k) => [k, !!saved[k]]));
   });
-  const [allHidden, setAllHidden] = useState(false);
-  const savedWidgetState = useRef(null);
+  const [widgetsHidden, setWidgetsHidden] = useState(false);
+  const savedStateRef = useRef(null);
   const [widgetLayout, setWidgetLayout] = useState(() => loadWidgetLayout());
 
   useEffect(() => {
@@ -825,7 +821,6 @@ function App() {
     if (forceLanding) window.history.replaceState({}, '', window.location.pathname);
   };
 
-  const navWidgetIds = ['timer', 'tasks', 'goals', 'progress', 'sound'];
   const ensureWidgetPos = useCallback((id) => {
     setWidgetLayout((prev) => {
       if (isWidgetPosValid(prev[id])) return prev;
@@ -836,47 +831,39 @@ function App() {
     });
   }, []);
 
-  const toggleWidget = (k) => {
-    if (navWidgetIds.includes(k)) {
-      setOpenWidgets((o) => {
-        const opening = !o[k];
-        if (opening) {
-          ensureWidgetPos(k);
-          setAllHidden(false);
-        }
-        return { ...o, [k]: !o[k] };
+  const toggleWidget = (key) => {
+    if (WIDGET_KEYS.includes(key)) {
+      setOpenWidgets((prev) => {
+        if (!prev[key]) ensureWidgetPos(key);
+        return { ...prev, [key]: !prev[key] };
       });
+      setWidgetsHidden(false);
       return;
     }
-    const opening = !widgetsOpen[k];
-    setWidgetsOpen((o) => ({ ...o, [k]: !o[k] }));
-    if (opening) ensureWidgetPos(k);
-  };
-
-  const hideAllWidgets = () => {
-    savedWidgetState.current = { ...openWidgets };
-    setOpenWidgets({
-      timer: false,
-      tasks: false,
-      goals: false,
-      progress: false,
-      sound: false,
+    setWidgetsOpen((prev) => {
+      if (!prev[key]) ensureWidgetPos(key);
+      return { ...prev, [key]: !prev[key] };
     });
-    setAllHidden(true);
+    setWidgetsHidden(false);
   };
 
-  const showAllWidgets = () => {
-    if (savedWidgetState.current) {
-      setOpenWidgets({ ...savedWidgetState.current });
-      navWidgetIds.forEach((id) => {
-        if (savedWidgetState.current[id]) ensureWidgetPos(id);
-      });
-    } else {
-      setOpenWidgets({ ...defaultOpenWidgets });
-      ensureWidgetPos('timer');
-      ensureWidgetPos('tasks');
-    }
-    setAllHidden(false);
+  const handleHideAll = () => {
+    savedStateRef.current = { ...openWidgets };
+    setOpenWidgets(Object.fromEntries(WIDGET_KEYS.map((k) => [k, false])));
+    setWidgetsHidden(true);
+  };
+
+  const handleShowAll = () => {
+    const hasSaved = savedStateRef.current
+      && Object.values(savedStateRef.current).some((v) => v);
+    const next = hasSaved
+      ? { ...savedStateRef.current }
+      : Object.fromEntries(WIDGET_KEYS.map((k) => [k, true]));
+    setOpenWidgets(next);
+    WIDGET_KEYS.forEach((id) => {
+      if (next[id]) ensureWidgetPos(id);
+    });
+    setWidgetsHidden(false);
   };
 
   const setWidgetPos = useCallback((id, pos) => {
@@ -931,13 +918,7 @@ function App() {
 
   const wProps = (k) => ({
     theme,
-    onClose: () => {
-      if (navWidgetIds.includes(k)) {
-        setOpenWidgets((o) => ({ ...o, [k]: false }));
-      } else {
-        setWidgetsOpen((o) => ({ ...o, [k]: false }));
-      }
-    },
+    onClose: () => toggleWidget(k),
     pos: widgetLayout[k],
     onPosChange: (p) => setWidgetPos(k, p),
     z: draggingWidget === k ? WIDGET_Z_DRAG : WIDGET_Z_BASE,
@@ -1054,12 +1035,11 @@ function App() {
         <div style={{ marginTop: 'auto', width: '100%' }}>
           <hr className="raildivider" />
           <RailBtn
-            icon={allHidden ? <Eye size={20} /> : <EyeOff size={20} />}
-            label={allHidden ? 'show widgets' : 'hide widgets'}
+            icon={widgetsHidden ? <Eye size={20} /> : <EyeOff size={20} />}
+            label={widgetsHidden ? 'show widgets' : 'hide widgets'}
             active={false}
-            onClick={() => (allHidden ? showAllWidgets() : hideAllWidgets())}
+            onClick={() => (widgetsHidden ? handleShowAll() : handleHideAll())}
           />
-          <RailBtn icon={<MoreHorizontal size={20} />} label="more" active={false} onClick={() => {}} />
         </div>
       </div>
 
